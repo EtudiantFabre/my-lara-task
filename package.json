@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vue-tsc && vite build && yarn install && yarn build",
+        "build": "vue-tsc && vite buil",
         "dev": "vite"
     },
     "devDependencies": {
