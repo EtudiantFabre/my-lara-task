@@ -70,7 +70,7 @@
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
-        "vercel": ["npm ci --legacy-peer-deps && npm run build"],
+        "vercel": ["npm ci --include=optional --legacy-peer-deps && npm run build"],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ]
