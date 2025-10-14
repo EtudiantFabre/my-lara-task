@@ -13,15 +13,5 @@
     "APP_DEBUG": "true",
     "APP_URL": "https://my-lara-task.vercel.app/",
     "APP_KEY": "base64:t2w3W+JrBkrk5zFOKJEnBAui2ePBwIifuwROZMwd5C4="
-  },
-  
-  "builds": [
-    {
-      "src": "public/index.php",
-      "use": "vercel-php@0.7.4",
-      "config": {
-        "command": "mkdir -p /tmp/cache/data /tmp/bootstrap/cache"
-      }
-    }
-  ]
+  }
 }
