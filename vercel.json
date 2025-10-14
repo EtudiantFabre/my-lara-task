@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.php": {
-      "runtime": "vercel-php@0.6.0"
+      "runtime": "vercel-php@0.7.4"
     }
   },
   "routes": [
@@ -11,6 +11,7 @@
   "env": {
     "APP_ENV": "production",
     "APP_DEBUG": "true",
-    "APP_URL": "YOUR_APP_URL"
+    "APP_URL": "https://my-lara-task.vercel.app/",
+    "APP_KEY": "base64:t2w3W+JrBkrk5zFOKJEnBAui2ePBwIifuwROZMwd5C4="
   }
 }

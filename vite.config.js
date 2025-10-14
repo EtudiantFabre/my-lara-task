@@ -3,6 +3,9 @@ import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
+    server: {
+        host: process.env.APP_URL,
+    },
     plugins: [
         laravel({
             input: 'resources/js/app.ts',
@@ -17,4 +20,7 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        outDir: 'public/build',
+    }
 });
