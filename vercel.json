@@ -14,6 +14,7 @@
     "APP_URL": "https://my-lara-task.vercel.app/",
     "APP_KEY": "base64:t2w3W+JrBkrk5zFOKJEnBAui2ePBwIifuwROZMwd5C4="
   },
+  
   "builds": [
     {
       "src": "public/index.php",
