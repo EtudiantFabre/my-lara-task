@@ -21,7 +21,7 @@
     "APP_SERVICES_CACHE": "/tmp/services.php",
     "VIEW_COMPILED_PATH": "/tmp",
     "DB_CONNECTION": "pgsql",
-    "DATABASE_URL" : "postgresql://neondb_owner:npg_jH2pluitfX8o@ep-holy-recipe-adefk6aw-pooler.c-2.us-east-1.aws.neon.tech/tasks?sslmode=require;options=endpoint%3Dep-holy-recipe-adefk6aw",
-    "DATABASE_URL_UNPOOLED": "postgresql://neondb_owner:npg_jH2pluitfX8o@ep-holy-recipe-adefk6aw-pooler.c-2.us-east-1.aws.neon.tech/tasks?sslmode=require;options=endpoint%3Dep-holy-recipe-adefk6aw"
+    "DATABASE_URL" : "postgresql://neondb_owner:npg_jH2pluitfX8o@ep-holy-recipe-adefk6aw-pooler.c-2.us-east-1.aws.neon.tech/tasks?sslmode=require",
+    "DATABASE_URL_UNPOOLED": "postgresql://neondb_owner:npg_jH2pluitfX8o@ep-holy-recipe-adefk6aw-pooler.c-2.us-east-1.aws.neon.tech/tasks?sslmode=require"
   }
 }
