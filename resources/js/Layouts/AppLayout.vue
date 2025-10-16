@@ -5,6 +5,7 @@ import {
   ListTodo,
   Users,
   Settings,
+  FolderIcon,
   LogOut,
   Menu,
   X
@@ -26,6 +27,7 @@ const isOpen = ref(false);
 
 const navigation = [
   { name: 'Tableau de bord', href: route('dashboard'), icon: LayoutDashboard },
+  { name: 'Projets', href: route('projects.index'), icon: FolderIcon },
   { name: 'Profil', href: route('profile.edit'), icon: Settings },
 ];
 

@@ -123,7 +123,7 @@
 </template>
 
 <script setup>
-import { useForm } from '@inertiajs/vue3';
+import { useForm, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -131,6 +131,9 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
+import { useToast } from '@/Components/ui/toast/use-toast';
+
+const { toast } = useToast();
 
 const form = useForm({
   title: '',
@@ -153,10 +156,39 @@ const statusOptions = [
 ];
 
 const submit = () => {
-  // Les IDs employee_id et manager_id devraient être définis dans le contrôleur
-  // ou via un sélecteur d'utilisateurs dans le formulaire
-  form.post(route('projects.store'));
+  form.post(route('projects.store'), {
+    preserveScroll: true,
+    onSuccess: () => {
+      // Afficher une notification de succès
+      toast({
+        title: 'Succès',
+        description: 'Le projet a été créé avec succès',
+        variant: 'success',
+      });
+      
+      // Rediriger vers la liste des projets
+      // Le contrôleur devrait déjà gérer la redirection avec l'ID du projet
+      router.visit(route('projects.index'));
+    },
+    onError: (errors) => {
+      let errorMessage = 'Une erreur est survenue lors de la création du projet';
+      
+      if (errors.message) {
+        errorMessage += `: ${errors.message}`;
+      } else if (errors.errors) {
+        // Si nous avons des erreurs de validation, les afficher
+        errorMessage = Object.values(errors.errors).flat().join('\n');
+      }
+      
+      toast({
+        title: 'Erreur',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+  });
 };
+
 
 // Mettre à jour la date d'échéance minimale quand la date de début change
 watch(() => form.start_date, (newStartDate) => {

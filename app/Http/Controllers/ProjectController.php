@@ -21,6 +21,7 @@ class ProjectController extends Controller
     {
         $user = auth()->user();
         $projects = Project::where('user_id', $user->id)
+            ->withCount('tasks')
             ->latest()
             ->get();
 
@@ -34,7 +35,7 @@ class ProjectController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Projects/Create', []);
+        return Inertia::render('Projects/Create');
     }
 
     /**
@@ -42,154 +43,91 @@ class ProjectController extends Controller
      */
     public function store(Request $request)
     {
-        \Log::info('Début de la création du projet', ['data' => $request->all()]);
-        //printf($request);
-        try {
-            $user = $request->user();
-            \Log::info('Utilisateur récupéré', ['user_id' => $user ? $user->id : null]);
-            
-            if (!$user) {
-                \Log::error('Erreur: Utilisateur non authentifié');
-                return redirect()->back()
-                    ->with('error', 'Utilisateur non authentifié');
-            }
+        $validated = $request->validate([
+            'title' => 'required|string|max:100',
+            'description' => 'nullable|string|max:1000',
+            'start_date' => 'required|date',
+            'deadline' => 'required|date|after:start_date'
+        ]);
 
-            \Log::info('Validation des données...');
-            $validated = $request->validate([
-                'title' => 'required|string|max:100',
-                'description' => 'nullable|string|max:1000',
-                'start_date' => 'required|date',
-                'deadline' => 'required|date|after:start_date'
-            ]);
-            \Log::info('Données validées avec succès', $validated);
+        $project = $request->user()->projects()->create([
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'start_date' => $validated['start_date'],
+            'deadline' => $validated['deadline'],
+            'status' => 'not_started',
+            'progress' => 0,
+            'user_id' => $request->user()->id,
+        ]);
 
-            \Log::info('Création du projet...');
-            $projectData = [
-                'title' => $validated['title'],
-                'description' => $validated['description'] ?? null,
-                'start_date' => $validated['start_date'],
-                'deadline' => $validated['deadline'],
-                'status' => 'not_started',
-                'progress' => 0,
-                'user_id' => $user->id
-            ];
-            \Log::info('Données du projet préparées', $projectData);
-
-            $project = Project::create($projectData);
-            \Log::info('Projet créé avec succès', ['project_id' => $project->id]);
-
-            return redirect()->route('projects.index')
-                ->with('success', 'Projet créé avec succès !');
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Erreur de validation', ['errors' => $e->errors()]);
-            return redirect()->back()
-                ->withErrors($e->errors())
-                ->withInput();
-                
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors de la création du projet', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()
-                ->with('error', 'Erreur lors de la création du projet: ' . $e->getMessage())
-                ->withInput();
-        }
+        return redirect()->route('projects.show', $project->id)
+            ->with('success', 'Projet créé avec succès');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Project $project): JsonResponse
+    public function show(Project $project)
     {
-        //$this->authorize('view', $project);
+        // Charger les tâches avec un tri par date de création par défaut
+        $project->load(['tasks' => function($query) {
+            $query->orderBy('created_at', 'desc');
+        }]);
         
-        // Vérifier que l'utilisateur est bien le propriétaire du projet
-        if ($project->user_id !== Auth::id()) {
-            abort(403, 'Unauthorized action.');
-        }
-        
-        return response()->json(new ProjectResource($project->load('tasks')));
+        return Inertia::render('Projects/Show', [
+            'project' => $project,
+            'canEdit' => true, // ou une logique de permission plus avancée
+            'statusOptions' => [
+                'not_started' => 'Non commencé',
+                'in_progress' => 'En cours',
+                'on_hold' => 'En attente',
+                'completed' => 'Terminé',
+                'cancelled' => 'Annulé'
+            ]
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Project $project): JsonResponse
+    public function update(Request $request, Project $project)
     {
         //$this->authorize('update', $project);
 
         $validated = $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'sometimes|date',
-            'deadline' => 'sometimes|date|after:start_date',
-            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
-            'progress' => 'sometimes|numeric|min:0|max:100',
-            'employee_id' => [
-                'sometimes',
-                'exists:users,id',
-                function ($attribute, $value, $fail) use ($project) {
-                    if ($value === $project->manager_id) {
-                        $fail('The employee cannot be the same as the project manager.');
-                    }
-                },
-            ],
+            'title' => 'required|string|max:100',
+            'description' => 'nullable|string|max:1000',
+            'start_date' => 'required|date',
+            'deadline' => 'required|date|after:start_date',
+            'status' => 'required|in:not_started,in_progress,on_hold,completed,cancelled',
+            'progress' => 'required|integer|min:0|max:100'
         ]);
 
-        try {
-            $project->update($validated);
+        $project->update($validated);
 
-            // Enregistrer l'activité
-            activity()
-                ->causedBy(Auth::user())
-                ->performedOn($project)
-                ->withProperties(['changes' => $validated])
-                ->log('updated');
-
-            return response()->json([
-                'message' => 'Project updated successfully',
-                'data' => new ProjectResource($project->load(['employee', 'manager']))
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Error updating project: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error updating project',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return back()->with('success', 'Projet mis à jour avec succès');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Project $project): JsonResponse
+    public function destroy(Project $project)
     {
-        //$this->authorize('delete', $project);
-
         try {
             // Enregistrer l'activité avant la suppression
             activity()
-                ->causedBy(Auth::user())
+                ->causedBy(auth()->user())
                 ->performedOn($project)
                 ->log('deleted');
 
             $project->delete();
 
-            return response()->json([
-                'message' => 'Project deleted successfully'
-            ], 204);
+            return redirect()->route('projects.index')
+                ->with('success', 'Projet supprimé avec succès');
             
         } catch (\Exception $e) {
-            Log::error('Error deleting project: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error deleting project',
-                'error' => $e->getMessage()
-            ], 500);
+            Log::error('Erreur lors de la suppression du projet: ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la suppression du projet');
         }
     }
     

@@ -60,7 +60,7 @@ class Project extends Model
 
     public function tasks(): HasMany
     {
-        return $this->hasMany(Task::class)->orderBy('position');;
+        return $this->hasMany(Task::class);
     }
 
     public function activityLogs(): MorphMany
