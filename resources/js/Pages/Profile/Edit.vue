@@ -14,7 +14,7 @@ defineProps<{
 <template>
     <Head title="Profile" />
 
-    <AuthenticatedLayout>
+    <AppLayout>
         <template #header>
             <h2
                 class="text-xl font-semibold leading-tight text-gray-800"
@@ -48,5 +48,5 @@ defineProps<{
                 </div>
             </div>
         </div>
-    </AuthenticatedLayout>
+    </AppLayout>
 </template>
