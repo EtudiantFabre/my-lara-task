@@ -181,21 +181,57 @@
           <div 
             v-for="task in project.tasks" 
             :key="task.id" 
-            class="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-            @click="$inertia.visit(route('tasks.show', task.id))"
+            class="p-4 border rounded-lg transition-colors"
           >
-            <div class="flex items-center justify-between">
-              <div class="font-medium">{{ task.title }}</div>
-              <Badge :variant="getStatusVariant(task.status)" class="capitalize">
-                {{ statusOptions[task.status] || task.status }}
-              </Badge>
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <button class="text-muted-foreground" @click="toggleExpanded(task.id)">
+                    <component :is="isExpanded(task.id) ? ChevronDown : ChevronRight" class="w-4 h-4" />
+                  </button>
+                  <div class="font-medium">{{ task.title }}</div>
+                  <Badge :variant="getStatusVariant(task.status)" class="capitalize ml-2">
+                    {{ statusOptions[task.status] || task.status }}
+                  </Badge>
+                </div>
+                <p class="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {{ task.description || 'Aucune description' }}
+                </p>
+                <div class="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <span>Créé le {{ formatDate(task.created_at, 'dd/MM/yyyy') }}</span>
+                  <span v-if="task.due_date">Échéance: {{ formatDate(task.due_date, 'dd/MM/yyyy') }}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <Button variant="outline" size="sm" @click="openTaskEditModal(task)">
+                  <Pencil class="w-4 h-4 mr-1" /> Modifier
+                </Button>
+                <Button variant="destructive" size="sm" @click="deleteTask(task)">
+                  <Trash2 class="w-4 h-4 mr-1" /> Supprimer
+                </Button>
+              </div>
             </div>
-            <p class="text-sm text-muted-foreground mt-1 line-clamp-2">
-              {{ task.description || 'Aucune description' }}
-            </p>
-            <div class="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-              <span>Créé le {{ formatDate(task.created_at, 'dd/MM/yyyy') }}</span>
-              <span v-if="task.due_date">Échéance: {{ formatDate(task.due_date, 'dd/MM/yyyy') }}</span>
+
+            <div v-if="isExpanded(task.id)" class="mt-4 pl-6 border-l">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-semibold">Sous-tâches</h3>
+                <Button size="sm" variant="outline" @click="openSubTaskModal(task)">
+                  <Plus class="w-4 h-4 mr-1" /> Nouvelle sous-tâche
+                </Button>
+              </div>
+              <div v-if="task.sub_tasks && task.sub_tasks.length" class="space-y-2">
+                <div v-for="st in task.sub_tasks" :key="st.id" class="flex items-center justify-between p-3 rounded border">
+                  <div class="flex items-center gap-3">
+                    <input type="checkbox" :checked="st.status === 'completed'" @change="toggleSubTask(task, st)" />
+                    <div class="font-medium" :class="{ 'line-through text-muted-foreground': st.status === 'completed' }">{{ st.title }}</div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <Button size="sm" variant="outline" @click="openSubTaskEdit(task, st)">Modifier</Button>
+                    <Button size="sm" variant="destructive" @click="deleteSubTask(task, st)">Supprimer</Button>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-sm text-muted-foreground">Aucune sous-tâche. Créez-en une.</div>
             </div>
           </div>
         </div>
@@ -285,13 +321,128 @@
           </form>
         </DialogContent>
       </Dialog>
+
+      <!-- Modal d'édition de tâche -->
+      <Dialog v-model:open="showTaskEditModal">
+        <DialogContent class="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier la tâche</DialogTitle>
+        <DialogDescription>
+          Mettez à jour les informations de la tâche sélectionnée.
+        </DialogDescription>
+          </DialogHeader>
+          <form @submit.prevent="submitTaskEdit">
+            <div class="grid gap-4 py-4">
+              <div class="space-y-2">
+                <Label for="title_edit">Titre</Label>
+                <Input id="title_edit" v-model="taskEditForm.title" required />
+              </div>
+              <div class="space-y-2">
+                <Label for="desc_edit">Description</Label>
+                <Textarea id="desc_edit" v-model="taskEditForm.description" class="min-h-[100px]" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="due_edit">Échéance</Label>
+                  <Input id="due_edit" type="date" v-model="taskEditForm.due_date" />
+                </div>
+                <div class="space-y-2">
+                  <Label for="est_edit">Temps estimé (h)</Label>
+                  <Input id="est_edit" type="number" min="0" step="0.5" v-model.number="taskEditForm.estimated_hours" />
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" @click="showTaskEditModal = false">Annuler</Button>
+              <Button type="submit" :disabled="taskEditForm.processing">Enregistrer</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <!-- Modal de création/édition de sous‑tâche -->
+      <Dialog v-model:open="showSubTaskModal">
+        <DialogContent class="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Nouvelle sous‑tâche</DialogTitle>
+        <DialogDescription>
+          Ajoutez une sous‑tâche pour la tâche sélectionnée.
+        </DialogDescription>
+          </DialogHeader>
+          <form @submit.prevent="submitSubTask">
+            <div class="grid gap-4 py-4">
+              <div class="space-y-2">
+                <Label for="st_title">Titre</Label>
+                <Input id="st_title" v-model="subTaskForm.title" required />
+              </div>
+              <div class="space-y-2">
+                <Label for="st_desc">Description</Label>
+                <Textarea id="st_desc" v-model="subTaskForm.description" class="min-h-[100px]" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="st_due">Échéance</Label>
+                  <Input id="st_due" type="date" v-model="subTaskForm.due_date" />
+                </div>
+                <div class="space-y-2">
+                  <Label for="st_est">Temps estimé (h)</Label>
+                  <Input id="st_est" type="number" min="0" step="0.5" v-model.number="subTaskForm.estimated_hours" />
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" @click="showSubTaskModal = false">Annuler</Button>
+              <Button type="submit" :disabled="subTaskForm.processing">Créer</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <!-- Modal d'édition de sous‑tâche -->
+      <Dialog v-model:open="showSubTaskEditModal">
+        <DialogContent class="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Modifier la sous‑tâche</DialogTitle>
+        <DialogDescription>
+          Mettez à jour les informations de cette sous‑tâche.
+        </DialogDescription>
+          </DialogHeader>
+          <form @submit.prevent="submitSubTaskEdit">
+            <div class="grid gap-4 py-4">
+              <div class="space-y-2">
+                <Label for="st_title_edit">Titre</Label>
+                <Input id="st_title_edit" v-model="subTaskEditForm.title" required />
+              </div>
+              <div class="space-y-2">
+                <Label for="st_desc_edit">Description</Label>
+                <Textarea id="st_desc_edit" v-model="subTaskEditForm.description" class="min-h-[100px]" />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="st_due_edit">Échéance</Label>
+                  <Input id="st_due_edit" type="date" v-model="subTaskEditForm.due_date" />
+                </div>
+                <div class="space-y-2">
+                  <Label for="st_est_edit">Temps estimé (h)</Label>
+                  <Input id="st_est_edit" type="number" min="0" step="0.5" v-model.number="subTaskEditForm.estimated_hours" />
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" @click="showSubTaskEditModal = false">Annuler</Button>
+              <Button type="submit" :disabled="subTaskEditForm.processing">Enregistrer</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
+import { useForm, router } from '@inertiajs/vue3';
+import axios from 'axios';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -332,7 +483,9 @@ import {
   Calendar,
   FileText,
   ListChecks,
-  Plus
+  Plus,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-vue-next';
 
 const { toast } = useToast();
@@ -354,6 +507,23 @@ const props = defineProps({
 
 const isEditing = ref(false);
 const showTaskModal = ref(false);
+const showSubTaskModal = ref(false);
+const showTaskEditModal = ref(false);
+const showSubTaskEditModal = ref(false);
+const expandedTaskIds = ref(new Set());
+const selectedTask = ref(null);
+const selectedSubTask = ref(null);
+
+const isExpanded = (taskId) => expandedTaskIds.value.has(taskId);
+const toggleExpanded = (taskId) => {
+  if (expandedTaskIds.value.has(taskId)) expandedTaskIds.value.delete(taskId); 
+  else expandedTaskIds.value.add(taskId);
+};
+
+const reloadProject = () => {
+  try { router.reload({ only: ['project'], preserveScroll: true }); } 
+  catch { router.visit(route('projects.show', props.project.id), { preserveScroll: true, replace: true }); }
+};
 
 // Formulaire de création de tâche
 const taskForm = useForm({
@@ -384,6 +554,7 @@ const submitTask = () => {
         description: 'La tâche a été créée avec succès',
         variant: 'success',
       });
+      reloadProject();
     },
     onError: (errors) => {
       toast({
@@ -408,13 +579,20 @@ const openTaskModal = () => {
   showTaskModal.value = true;
 };
 
+const toInputDate = (d) => {
+  if (!d) return '';
+  try { return format(new Date(d), 'yyyy-MM-dd'); } catch { return d; }
+};
+
+console.log(`props.project: ${JSON.stringify(props.project)}`);
+
 const form = useForm({
-  title: props.project.title,
-  description: props.project.description,
-  start_date: props.project.start_date,
-  deadline: props.project.deadline,
-  status: props.project.status,
-  progress: props.project.progress,
+  title: props.project.title ?? '',
+  description: props.project.description ?? '',
+  start_date: toInputDate(props.project.start_date),
+  deadline: toInputDate(props.project.deadline),
+  status: props.project.status ?? 'not_started',
+  progress: props.project.progress ?? 0,
 });
 
 const editProject = () => {
@@ -461,6 +639,108 @@ const deleteProject = () => {
     });
   }
 };
+
+// Subtask creation form
+const subTaskForm = useForm({
+  title: '',
+  description: '',
+  estimated_hours: null,
+  due_date: ''
+});
+
+const openSubTaskModal = (task) => {
+  selectedTask.value = task;
+  subTaskForm.reset();
+  showSubTaskModal.value = true;
+};
+
+const submitSubTask = () => {
+  if (!selectedTask.value) return;
+  subTaskForm.post(route('subtasks.store', { task: selectedTask.value.id }), {
+    preserveScroll: true,
+    onSuccess: () => {
+      showSubTaskModal.value = false;
+      toast({ title: 'Succès', description: 'Sous-tâche créée', variant: 'success' });
+      reloadProject();
+    },
+    onError: () => {
+      toast({ title: 'Erreur', description: 'Création de sous-tâche échouée', variant: 'destructive' });
+    }
+  });
+};
+
+const toggleSubTask = async (task, st) => {
+  try {
+    await axios.patch(route('subtasks.toggle', { task: task.id, subTask: st.id }));
+    reloadProject();
+  } catch (e) {
+    toast({ title: 'Erreur', description: "Impossible de changer le statut", variant: 'destructive' });
+  }
+};
+
+const deleteTask = (task) => {
+  if (!confirm('Supprimer cette tâche ?')) return;
+  router.delete(route('projects.tasks.destroy', { project: props.project.id, task: task.id }), {
+    preserveScroll: true,
+    onSuccess: () => { toast({ title: 'Succès', description: 'Tâche supprimée', variant: 'success' }); reloadProject(); },
+    onError: () => { toast({ title: 'Erreur', description: 'Suppression échouée', variant: 'destructive' }); }
+  });
+};
+
+const deleteSubTask = (task, st) => {
+  if (!confirm('Supprimer cette sous‑tâche ?')) return;
+  router.delete(route('subtasks.destroy', { task: task.id, subTask: st.id }), {
+    preserveScroll: true,
+    onSuccess: () => { toast({ title: 'Succès', description: 'Sous‑tâche supprimée', variant: 'success' }); reloadProject(); },
+    onError: () => { toast({ title: 'Erreur', description: 'Suppression échouée', variant: 'destructive' }); }
+  });
+};
+
+// Subtask edit state
+const subTaskEditForm = useForm({ title: '', description: '', due_date: '', estimated_hours: null });
+const openSubTaskEdit = (task, st) => {
+  selectedTask.value = task;
+  selectedSubTask.value = st;
+  subTaskEditForm.reset();
+  subTaskEditForm.title = st.title || '';
+  subTaskEditForm.description = st.description || '';
+  subTaskEditForm.due_date = toInputDate(st.due_date);
+  subTaskEditForm.estimated_hours = st.estimated_time ?? null;
+  showSubTaskEditModal.value = true;
+};
+
+const submitSubTaskEdit = () => {
+  if (!selectedTask.value || !selectedSubTask.value) return;
+  subTaskEditForm.put(route('subtasks.update', { task: selectedTask.value.id, subTask: selectedSubTask.value.id }), {
+    preserveScroll: true,
+    onSuccess: () => { showSubTaskEditModal.value = false; toast({ title: 'Succès', description: 'Sous‑tâche mise à jour', variant: 'success' }); reloadProject(); },
+    onError: () => { toast({ title: 'Erreur', description: 'Mise à jour échouée', variant: 'destructive' }); }
+  });
+};
+
+// Task edit
+const taskEditForm = useForm({ title: '', description: '', due_date: '', estimated_hours: null, status: 'not_started' });
+const openTaskEditModal = (task) => {
+  selectedTask.value = task;
+  taskEditForm.reset();
+  taskEditForm.title = task.title || '';
+  taskEditForm.description = task.description || '';
+  taskEditForm.due_date = toInputDate(task.due_date);
+  taskEditForm.estimated_hours = task.estimated_time ?? null;
+  taskEditForm.status = task.status || 'not_started';
+  showTaskEditModal.value = true;
+};
+
+const submitTaskEdit = () => {
+  if (!selectedTask.value) return;
+  taskEditForm.put(route('projects.tasks.update', { project: props.project.id, task: selectedTask.value.id }), {
+    preserveScroll: true,
+    onSuccess: () => { showTaskEditModal.value = false; toast({ title: 'Succès', description: 'Tâche mise à jour', variant: 'success' }); reloadProject(); },
+    onError: () => { toast({ title: 'Erreur', description: 'Mise à jour échouée', variant: 'destructive' }); }
+  });
+};
+
+// (duplicate removed)
 
 // Computed properties
 const daysRemaining = computed(() => {

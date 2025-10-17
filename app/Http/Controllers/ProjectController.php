@@ -47,16 +47,20 @@ class ProjectController extends Controller
             'title' => 'required|string|max:100',
             'description' => 'nullable|string|max:1000',
             'start_date' => 'required|date',
-            'deadline' => 'required|date|after:start_date'
+            'deadline' => 'required|date|after:start_date',
+            'progress' => 'required|numeric|min:0|max:100',
         ]);
 
-        $project = $request->user()->projects()->create([
+        // Use ownedProjects (one-to-many) to avoid inserting into pivot table
+        $project = $request->user()->ownedProjects()->create([
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'start_date' => $validated['start_date'],
             'deadline' => $validated['deadline'],
+            'estimated_time' => 0,
+            'time_spent' => 0,
             'status' => 'not_started',
-            'progress' => 0,
+            'progress' => $validated['progress'],
             'user_id' => $request->user()->id,
         ]);
 
@@ -69,9 +73,9 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        // Charger les tâches avec un tri par date de création par défaut
+        // Charger les tâches et leurs sous-tâches avec un tri par date
         $project->load(['tasks' => function($query) {
-            $query->orderBy('created_at', 'desc');
+            $query->with('subTasks')->orderBy('created_at', 'desc');
         }]);
         
         return Inertia::render('Projects/Show', [

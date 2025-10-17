@@ -18,14 +18,18 @@ class TaskController extends Controller
     /**
      * Display a listing of tasks.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, Project $project = null): JsonResponse
     {
         $user = $request->user();
         
         $query = Task::with(['project', 'assignee', 'creator', 'subTasks']);
         
-        // Filtrage par projet si spécifié
-        if ($request->has('project_id')) {
+        // Filtrage par projet depuis la route nested (projects/{project}/tasks) ou via query param
+        $routeProject = $project ?? $request->route('project');
+        if ($routeProject) {
+            $projectId = is_object($routeProject) ? $routeProject->id : (string) $routeProject;
+            $query->where('project_id', $projectId);
+        } elseif ($request->has('project_id')) {
             $query->where('project_id', $request->project_id);
         }
         
@@ -67,19 +71,37 @@ class TaskController extends Controller
     /**
      * Store a newly created task in storage.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, Project $project)
     {
+        $routeProject = $project ?? $request->route('project');
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'project_id' => 'required|exists:projects,id',
+            'project_id' => $routeProject ? 'sometimes' : 'required|exists:projects,id',
             'assigned_to' => ['sometimes', 'exists:users,id'],
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'due_date' => 'nullable|date|after_or_equal:today',
-            'estimated_time' => 'required|numeric|min:0',
+            // Accept either estimated_time (backend) or estimated_hours (frontend form)
+            'estimated_time' => 'sometimes|numeric|min:0',
+            'estimated_hours' => 'sometimes|numeric|min:0',
         ]);
         
         try {
+            // Prefer project from nested route (can be model or string id)
+            $projectId = null;
+            if ($routeProject) {
+                $projectId = is_object($routeProject) ? $routeProject->id : (string) $routeProject;
+            } else {
+                $projectId = $validated['project_id'] ?? null;
+            }
+            $validated['project_id'] = $projectId;
+
+            // Normalize estimated_time
+            if (!array_key_exists('estimated_time', $validated)) {
+                $validated['estimated_time'] = (float) ($validated['estimated_hours'] ?? 0);
+            }
+
             $validated['created_by'] = Auth::id();
             $validated['assigned_to'] = $validated['assigned_to'] ?? Auth::id();
             $validated['status'] = $validated['status'] ?? 'not_started';
@@ -93,10 +115,15 @@ class TaskController extends Controller
                 ->withProperties(['attributes' => $validated])
                 ->log('created');
             
-            return response()->json([
-                'message' => 'Task created successfully',
-                'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
-            ], 201);
+            // Return JSON for API, redirect for Inertia/web
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Task created successfully',
+                    'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
+                ], 201);
+            }
+            return redirect()->route('projects.show', $projectId)
+                ->with('success', 'Tâche créée avec succès');
             
         } catch (\Exception $e) {
             Log::error('Error creating task: ' . $e->getMessage());
@@ -112,7 +139,6 @@ class TaskController extends Controller
      */
     public function show(Task $task): JsonResponse
     {
-        $this->authorize('view', $task);
         
         return response()->json([
             'data' => new TaskResource(
@@ -132,9 +158,11 @@ class TaskController extends Controller
     /**
      * Update the specified task in storage.
      */
-    public function update(Request $request, Task $task): JsonResponse
+    public function update(Request $request, Project $project, Task $task)
     {
-        $this->authorize('update', $task);
+        // Ensure the task belongs to the nested project
+        $projectId = $project->id;
+        abort_unless($task->project_id === $projectId, 404);
         
         $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
@@ -144,10 +172,16 @@ class TaskController extends Controller
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'due_date' => 'sometimes|date|after_or_equal:today',
             'estimated_time' => 'sometimes|numeric|min:0',
+            'estimated_hours' => 'sometimes|numeric|min:0',
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         
         try {
+            // Normalize estimated_time on update
+            if (!array_key_exists('estimated_time', $validated) && array_key_exists('estimated_hours', $validated)) {
+                $validated['estimated_time'] = (float) $validated['estimated_hours'];
+            }
+
             $task->update($validated);
             
             // Si le statut est marqué comme terminé, mettre la progression à 100%
@@ -162,10 +196,13 @@ class TaskController extends Controller
                 ->withProperties(['changes' => $validated])
                 ->log('updated');
             
-            return response()->json([
-                'message' => 'Task updated successfully',
-                'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
-            ]);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Task updated successfully',
+                    'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
+                ]);
+            }
+            return back()->with('success', 'Tâche mise à jour avec succès');
             
         } catch (\Exception $e) {
             Log::error('Error updating task: ' . $e->getMessage());
@@ -179,9 +216,11 @@ class TaskController extends Controller
     /**
      * Remove the specified task from storage.
      */
-    public function destroy(Task $task): JsonResponse
+    public function destroy(Request $request, Project $project, Task $task)
     {
-        $this->authorize('delete', $task);
+        // Ensure the task belongs to the nested project
+        $projectId = $project->id;
+        abort_unless($task->project_id === $projectId, 404);
         
         try {
             // Enregistrer l'activité avant la suppression
@@ -192,9 +231,15 @@ class TaskController extends Controller
             
             $task->delete();
             
-            return response()->json([
-                'message' => 'Task deleted successfully'
-            ], 204);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Task deleted successfully'
+                ], 204);
+            }
+            // Redirect to project page if nested, else to projects index
+            return redirect()->route('projects.show', $projectId)
+                ->with('success', 'Tâche supprimée avec succès');
+            
             
         } catch (\Exception $e) {
             Log::error('Error deleting task: ' . $e->getMessage());
@@ -210,7 +255,6 @@ class TaskController extends Controller
      */
     public function updateStatus(Request $request, Task $task): JsonResponse
     {
-        $this->authorize('update', $task);
         
         $validated = $request->validate([
             'status' => ['required', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],

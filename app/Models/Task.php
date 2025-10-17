@@ -74,5 +74,23 @@ class Task extends Model
                 $project->save();
             }
         });
+
+        // Cohérence: recalculer l'estimation d'un projet depuis les tâches
+        static::saved(function ($task) {
+            $project = $task->project;
+            if ($project) {
+                $totalEstimated = (float) ($project->tasks()->sum('estimated_time'));
+                $totalSpent = (float) ($project->tasks()->sum('time_spent'));
+                // stocker en colonnes si présentes, sinon ignorer silencieusement
+                if ($project->isFillable('estimated_time')) {
+                    $project->estimated_time = $totalEstimated;
+                }
+                if ($project->isFillable('time_spent')) {
+                    $project->time_spent = $totalSpent;
+                }
+                // progression moyenne déjà gérée ci-dessus
+                $project->save();
+            }
+        });
     }
 }

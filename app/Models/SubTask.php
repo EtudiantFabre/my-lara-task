@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class SubTask extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasUuids;
+
+    protected $keyType = 'string';
 
     protected $fillable = [
         'title',
@@ -63,5 +66,18 @@ class SubTask extends Model
                 }
             }
         });
+
+        // Cohérence: recalculer les temps de la tâche depuis les sous‑tâches
+        $recalcTaskTimes = function ($subTask) {
+            $task = $subTask->task;
+            if ($task) {
+                $task->estimated_time = (float) $task->subTasks()->sum('estimated_time');
+                $task->time_spent = (float) $task->subTasks()->sum('time_spent');
+                $task->save();
+            }
+        };
+
+        static::saved($recalcTaskTimes);
+        static::deleted($recalcTaskTimes);
     }
 }

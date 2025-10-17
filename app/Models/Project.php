@@ -24,6 +24,8 @@ class Project extends Model
         'description',
         'start_date',
         'deadline',
+        'estimated_time',
+        'time_spent',
         'progress',
         'status',
         'user_id',
@@ -32,6 +34,8 @@ class Project extends Model
     protected $casts = [
         'start_date' => 'date',
         'deadline' => 'date',
+        'estimated_time' => 'float',
+        'time_spent' => 'float',
         'progress' => 'float',
     ];
 
