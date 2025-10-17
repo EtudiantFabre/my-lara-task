@@ -10,10 +10,13 @@ import {
   Menu,
   X
 } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { Button } from '@/Components/ui/button';
 import { cn } from '@/lib/utils';
 import QuickAddButton from '@/Components/Common/QuickAddButton.vue';
+import { Toaster } from '@/Components/ui/toast';
+import { useToast } from '@/Components/ui/toast/use-toast';
+import { usePage } from '@inertiajs/vue3';
 
 
 defineProps({
@@ -34,6 +37,23 @@ const navigation = [
 const activeClass = 'bg-primary/10 text-primary';
 const showNewProjectDialog = ref(false);
 const showNewTaskDialog = ref(false);
+
+const { toast } = useToast();
+const page = usePage();
+
+watch(
+  () => page.props.flash as any,
+  (flash: any) => {
+    if (!flash) return;
+    if (flash.success) {
+      toast({ title: 'Succès', description: String(flash.success), variant: 'success' });
+    }
+    if (flash.error) {
+      toast({ title: 'Erreur', description: String(flash.error), variant: 'destructive' });
+    }
+  },
+  { immediate: true, deep: true }
+);
 </script>
 
 <template>
@@ -134,5 +154,6 @@ const showNewTaskDialog = ref(false);
         </div>
       </main>
     </div>
+    <Toaster />
   </div>
 </template>
