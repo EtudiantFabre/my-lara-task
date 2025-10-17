@@ -38,7 +38,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}/report', [ProjectController::class, 'report'])->name('projects.report');
     
     // Tâches
-    Route::resource('projects.tasks', TaskController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('projects.tasks', TaskController::class)->only(['index', 'create', 'store', 'update', 'destroy']);
     Route::post('tasks/{task}/complete', [TaskController::class, 'toggleComplete'])->name('tasks.complete');
     Route::post('tasks/{task}/start-timer', [TaskController::class, 'startTimer'])->name('tasks.timer.start');
     Route::post('tasks/{task}/stop-timer', [TaskController::class, 'stopTimer'])->name('tasks.timer.stop');

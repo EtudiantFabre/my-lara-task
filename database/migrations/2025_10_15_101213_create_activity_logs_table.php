@@ -15,14 +15,16 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('action'); // created, updated, completed, etc.
             $table->text('description')->nullable();
-            
+            $table->string('log_name')->nullable();
+            $table->nullableMorphs('subject', 'subject');
+            $table->nullableMorphs('causer', 'causer');
+            $table->json('properties')->nullable();
+            $table->timestamps();
             // Clés étrangères
             $table->foreignUuid('user_id')->constrained()->onDelete('cascade');
             $table->nullableUuidMorphs('loggable'); // Polymorphic relationship
-            
             // Données supplémentaires
             $table->json('properties')->nullable();
-            
             $table->timestamps();
         });
     }

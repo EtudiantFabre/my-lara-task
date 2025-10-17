@@ -171,7 +171,7 @@
             <ListChecks class="mr-2 h-5 w-5" />
             Tâches
           </h2>
-          <Button @click="$inertia.visit(route('tasks.create', { project_id: project.id }))">
+          <Button @click="openTaskModal">
             <Plus class="mr-2 h-4 w-4" />
             Nouvelle tâche
           </Button>
@@ -205,22 +205,122 @@
           <Button 
             variant="outline" 
             class="mt-4"
-            @click="$inertia.visit(route('tasks.create', { project_id: project.id }))"
+            @click="openTaskModal"
           >
             <Plus class="mr-2 h-4 w-4" />
             Créer une tâche
           </Button>
         </div>
       </div>
+
+      <!-- Modal de création de tâche -->
+      <Dialog v-model:open="showTaskModal">
+        <DialogContent class="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Nouvelle tâche</DialogTitle>
+            <DialogDescription>
+              Créez une nouvelle tâche pour ce projet.
+            </DialogDescription>
+          </DialogHeader>
+          <form @submit.prevent="submitTask">
+            <div class="grid gap-4 py-4">
+              <div class="space-y-2">
+                <Label for="title">Titre</Label>
+                <Input id="title" v-model="taskForm.title" required />
+              </div>
+              
+              <div class="space-y-2">
+                <Label for="description">Description</Label>
+                <Textarea id="description" v-model="taskForm.description" class="min-h-[100px]" />
+              </div>
+              
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label for="priority">Priorité</Label>
+                  <Select v-model="taskForm.priority" required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionnez une priorité" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Basse</SelectItem>
+                      <SelectItem value="medium">Moyenne</SelectItem>
+                      <SelectItem value="high">Haute</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div class="space-y-2">
+                  <Label for="due_date">Date d'échéance</Label>
+                  <Input 
+                    id="due_date" 
+                    type="date" 
+                    v-model="taskForm.due_date" 
+                    :min="format(new Date(), 'yyyy-MM-dd')"
+                    required 
+                  />
+                </div>
+              </div>
+              
+              <div class="space-y-2">
+                <Label for="estimated_hours">Temps estimé (heures)</Label>
+                <Input 
+                  id="estimated_hours" 
+                  type="number" 
+                  v-model.number="taskForm.estimated_hours" 
+                  min="0" 
+                  step="0.5" 
+                />
+              </div>
+            </div>
+            
+            <div class="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" @click="showTaskModal = false">
+                Annuler
+              </Button>
+              <Button type="submit" :disabled="taskForm.processing">
+                <span v-if="taskForm.processing">Création...</span>
+                <span v-else>Créer la tâche</span>
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+
+// Composants UI
+import AppLayout from '@/Layouts/AppLayout.vue';
+import { Button } from '@/Components/ui/button';
+import { Badge } from '@/Components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Progress } from '@/Components/ui/progress';
+import { Input } from '@/Components/ui/input';
+import { Textarea } from '@/Components/ui/textarea';
+import { Label } from '@/Components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/Components/ui/select';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription 
+} from '@/Components/ui/dialog';
+import { useToast } from '@/Components/ui/toast/use-toast';
+
+// Icônes
 import { 
   Pencil, 
   Save, 
@@ -234,21 +334,6 @@ import {
   ListChecks,
   Plus
 } from 'lucide-vue-next';
-import { Button } from '@/Components/ui/button';
-import { Badge } from '@/Components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Progress } from '@/Components/ui/progress';
-import { Input } from '@/Components/ui/input';
-import { Textarea } from '@/Components/ui/textarea';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/Components/ui/select';
-import { useToast } from '@/Components/ui/toast/use-toast';
-import AppLayout from '@/Layouts/AppLayout.vue';
 
 const { toast } = useToast();
 
@@ -268,6 +353,60 @@ const props = defineProps({
 });
 
 const isEditing = ref(false);
+const showTaskModal = ref(false);
+
+// Formulaire de création de tâche
+const taskForm = useForm({
+  title: '',
+  description: '',
+  project_id: props.project.id,
+  priority: 'medium',
+  due_date: format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // 7 jours plus tard par défaut
+  estimated_hours: null,
+  status: 'not_started',
+});
+
+// Soumission du formulaire de tâche
+const submitTask = () => {
+  taskForm.post(route('projects.tasks.store', props.project.id), {
+    preserveScroll: true,
+    onSuccess: () => {
+      showTaskModal.value = false;
+      taskForm.reset();
+      // Réinitialiser avec les valeurs par défaut
+      taskForm.project_id = props.project.id;
+      taskForm.due_date = format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+      taskForm.priority = 'medium';
+      
+      // Afficher une notification de succès
+      toast({
+        title: 'Succès',
+        description: 'La tâche a été créée avec succès',
+        variant: 'success',
+      });
+    },
+    onError: (errors) => {
+      toast({
+        title: 'Erreur',
+        description: 'Une erreur est survenue lors de la création de la tâche',
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
+// Ouvrir le modal de création de tâche
+const openTaskModal = () => {
+  // Réinitialiser le formulaire avec les valeurs par défaut
+  taskForm.reset();
+  taskForm.project_id = props.project.id;
+  taskForm.due_date = format(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
+  taskForm.priority = 'medium';
+  taskForm.status = 'not_started';
+  
+  // Afficher la modale
+  showTaskModal.value = true;
+};
 
 const form = useForm({
   title: props.project.title,

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->decimal('estimated_time', 8, 2)->comment('Estimated time in hours');
+            $table->decimal('estimated_time', 8, 2)->nullable()->comment('Estimated time in hours');
             $table->decimal('time_spent', 8, 2)->default(0)->comment('Time spent in hours');
             $table->decimal('progress', 5, 2)->default(0);
             $table->enum('status', ['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])->default('not_started');
