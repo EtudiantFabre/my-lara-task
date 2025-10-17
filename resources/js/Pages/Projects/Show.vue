@@ -261,18 +261,20 @@
           <form @submit.prevent="submitTask">
             <div class="grid gap-4 py-4">
               <div class="space-y-2">
-                <Label for="title">Titre</Label>
+                <Label for="title" :required="true">Titre</Label>
                 <Input id="title" v-model="taskForm.title" required />
+                <p v-if="taskForm.errors.title" class="text-sm text-destructive">{{ taskForm.errors.title }}</p>
               </div>
               
               <div class="space-y-2">
                 <Label for="description">Description</Label>
                 <Textarea id="description" v-model="taskForm.description" class="min-h-[100px]" />
+                <p v-if="taskForm.errors.description" class="text-sm text-destructive">{{ taskForm.errors.description }}</p>
               </div>
               
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
-                  <Label for="priority">Priorité</Label>
+                  <Label for="priority" :required="true">Priorité</Label>
                   <Select v-model="taskForm.priority" required>
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionnez une priorité" />
@@ -286,7 +288,7 @@
                 </div>
                 
                 <div class="space-y-2">
-                  <Label for="due_date">Date d'échéance</Label>
+                  <Label for="due_date" :required="true">Date d'échéance</Label>
                   <Input 
                     id="due_date" 
                     type="date" 
@@ -294,6 +296,7 @@
                     :min="format(new Date(), 'yyyy-MM-dd')"
                     required 
                   />
+                  <p v-if="taskForm.errors.due_date" class="text-sm text-destructive">{{ taskForm.errors.due_date }}</p>
                 </div>
               </div>
               
@@ -306,6 +309,7 @@
                   min="0" 
                   step="0.5" 
                 />
+                <p v-if="taskForm.errors.estimated_hours" class="text-sm text-destructive">{{ taskForm.errors.estimated_hours }}</p>
               </div>
             </div>
             
@@ -334,21 +338,25 @@
           <form @submit.prevent="submitTaskEdit">
             <div class="grid gap-4 py-4">
               <div class="space-y-2">
-                <Label for="title_edit">Titre</Label>
+                <Label for="title_edit" :required="true">Titre</Label>
                 <Input id="title_edit" v-model="taskEditForm.title" required />
+                <p v-if="taskEditForm.errors.title" class="text-sm text-destructive">{{ taskEditForm.errors.title }}</p>
               </div>
               <div class="space-y-2">
                 <Label for="desc_edit">Description</Label>
                 <Textarea id="desc_edit" v-model="taskEditForm.description" class="min-h-[100px]" />
+                <p v-if="taskEditForm.errors.description" class="text-sm text-destructive">{{ taskEditForm.errors.description }}</p>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="due_edit">Échéance</Label>
-                  <Input id="due_edit" type="date" v-model="taskEditForm.due_date" />
+                  <Input id="due_edit" type="date" v-model="taskEditForm.due_date" :min="format(new Date(), 'yyyy-MM-dd')" />
+                  <p v-if="taskEditForm.errors.due_date" class="text-sm text-destructive">{{ taskEditForm.errors.due_date }}</p>
                 </div>
                 <div class="space-y-2">
                   <Label for="est_edit">Temps estimé (h)</Label>
                   <Input id="est_edit" type="number" min="0" step="0.5" v-model.number="taskEditForm.estimated_hours" />
+                  <p v-if="taskEditForm.errors.estimated_hours" class="text-sm text-destructive">{{ taskEditForm.errors.estimated_hours }}</p>
                 </div>
               </div>
             </div>
@@ -372,21 +380,25 @@
           <form @submit.prevent="submitSubTask">
             <div class="grid gap-4 py-4">
               <div class="space-y-2">
-                <Label for="st_title">Titre</Label>
+                <Label for="st_title" :required="true">Titre</Label>
                 <Input id="st_title" v-model="subTaskForm.title" required />
+                <p v-if="subTaskForm.errors.title" class="text-sm text-destructive">{{ subTaskForm.errors.title }}</p>
               </div>
               <div class="space-y-2">
                 <Label for="st_desc">Description</Label>
                 <Textarea id="st_desc" v-model="subTaskForm.description" class="min-h-[100px]" />
+                <p v-if="subTaskForm.errors.description" class="text-sm text-destructive">{{ subTaskForm.errors.description }}</p>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="st_due">Échéance</Label>
-                  <Input id="st_due" type="date" v-model="subTaskForm.due_date" />
+                  <Input id="st_due" type="date" v-model="subTaskForm.due_date" :min="format(new Date(), 'yyyy-MM-dd')" />
+                  <p v-if="subTaskForm.errors.due_date" class="text-sm text-destructive">{{ subTaskForm.errors.due_date }}</p>
                 </div>
                 <div class="space-y-2">
                   <Label for="st_est">Temps estimé (h)</Label>
                   <Input id="st_est" type="number" min="0" step="0.5" v-model.number="subTaskForm.estimated_hours" />
+                  <p v-if="subTaskForm.errors.estimated_hours" class="text-sm text-destructive">{{ subTaskForm.errors.estimated_hours }}</p>
                 </div>
               </div>
             </div>
@@ -410,21 +422,25 @@
           <form @submit.prevent="submitSubTaskEdit">
             <div class="grid gap-4 py-4">
               <div class="space-y-2">
-                <Label for="st_title_edit">Titre</Label>
+                <Label for="st_title_edit" :required="true">Titre</Label>
                 <Input id="st_title_edit" v-model="subTaskEditForm.title" required />
+                <p v-if="subTaskEditForm.errors.title" class="text-sm text-destructive">{{ subTaskEditForm.errors.title }}</p>
               </div>
               <div class="space-y-2">
                 <Label for="st_desc_edit">Description</Label>
                 <Textarea id="st_desc_edit" v-model="subTaskEditForm.description" class="min-h-[100px]" />
+                <p v-if="subTaskEditForm.errors.description" class="text-sm text-destructive">{{ subTaskEditForm.errors.description }}</p>
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <Label for="st_due_edit">Échéance</Label>
-                  <Input id="st_due_edit" type="date" v-model="subTaskEditForm.due_date" />
+                  <Input id="st_due_edit" type="date" v-model="subTaskEditForm.due_date" :min="format(new Date(), 'yyyy-MM-dd')" />
+                  <p v-if="subTaskEditForm.errors.due_date" class="text-sm text-destructive">{{ subTaskEditForm.errors.due_date }}</p>
                 </div>
                 <div class="space-y-2">
                   <Label for="st_est_edit">Temps estimé (h)</Label>
                   <Input id="st_est_edit" type="number" min="0" step="0.5" v-model.number="subTaskEditForm.estimated_hours" />
+                  <p v-if="subTaskEditForm.errors.estimated_hours" class="text-sm text-destructive">{{ subTaskEditForm.errors.estimated_hours }}</p>
                 </div>
               </div>
             </div>
@@ -557,11 +573,8 @@ const submitTask = () => {
       reloadProject();
     },
     onError: (errors) => {
-      toast({
-        title: 'Erreur',
-        description: 'Une erreur est survenue lors de la création de la tâche',
-        variant: 'destructive',
-      });
+      const msg = Object.values(errors || {}).flat().join('\n') || 'Une erreur est survenue lors de la création de la tâche';
+      toast({ title: 'Erreur', description: msg, variant: 'destructive' });
     },
   });
 };
@@ -663,8 +676,9 @@ const submitSubTask = () => {
       toast({ title: 'Succès', description: 'Sous-tâche créée', variant: 'success' });
       reloadProject();
     },
-    onError: () => {
-      toast({ title: 'Erreur', description: 'Création de sous-tâche échouée', variant: 'destructive' });
+    onError: (errors) => {
+      const msg = Object.values(errors || {}).flat().join('\n') || 'Création de sous-tâche échouée';
+      toast({ title: 'Erreur', description: msg, variant: 'destructive' });
     }
   });
 };
@@ -683,7 +697,7 @@ const deleteTask = (task) => {
   router.delete(route('projects.tasks.destroy', { project: props.project.id, task: task.id }), {
     preserveScroll: true,
     onSuccess: () => { toast({ title: 'Succès', description: 'Tâche supprimée', variant: 'success' }); reloadProject(); },
-    onError: () => { toast({ title: 'Erreur', description: 'Suppression échouée', variant: 'destructive' }); }
+    onError: (errors) => { const msg = Object.values(errors || {}).flat().join('\n') || 'Suppression échouée'; toast({ title: 'Erreur', description: msg, variant: 'destructive' }); }
   });
 };
 
@@ -692,7 +706,7 @@ const deleteSubTask = (task, st) => {
   router.delete(route('subtasks.destroy', { task: task.id, subTask: st.id }), {
     preserveScroll: true,
     onSuccess: () => { toast({ title: 'Succès', description: 'Sous‑tâche supprimée', variant: 'success' }); reloadProject(); },
-    onError: () => { toast({ title: 'Erreur', description: 'Suppression échouée', variant: 'destructive' }); }
+    onError: (errors) => { const msg = Object.values(errors || {}).flat().join('\n') || 'Suppression échouée'; toast({ title: 'Erreur', description: msg, variant: 'destructive' }); }
   });
 };
 
@@ -714,7 +728,7 @@ const submitSubTaskEdit = () => {
   subTaskEditForm.put(route('subtasks.update', { task: selectedTask.value.id, subTask: selectedSubTask.value.id }), {
     preserveScroll: true,
     onSuccess: () => { showSubTaskEditModal.value = false; toast({ title: 'Succès', description: 'Sous‑tâche mise à jour', variant: 'success' }); reloadProject(); },
-    onError: () => { toast({ title: 'Erreur', description: 'Mise à jour échouée', variant: 'destructive' }); }
+    onError: (errors) => { const msg = Object.values(errors || {}).flat().join('\n') || 'Mise à jour échouée'; toast({ title: 'Erreur', description: msg, variant: 'destructive' }); }
   });
 };
 
@@ -736,7 +750,7 @@ const submitTaskEdit = () => {
   taskEditForm.put(route('projects.tasks.update', { project: props.project.id, task: selectedTask.value.id }), {
     preserveScroll: true,
     onSuccess: () => { showTaskEditModal.value = false; toast({ title: 'Succès', description: 'Tâche mise à jour', variant: 'success' }); reloadProject(); },
-    onError: () => { toast({ title: 'Erreur', description: 'Mise à jour échouée', variant: 'destructive' }); }
+    onError: (errors) => { const msg = Object.values(errors || {}).flat().join('\n') || 'Mise à jour échouée'; toast({ title: 'Erreur', description: msg, variant: 'destructive' }); }
   });
 };
 
