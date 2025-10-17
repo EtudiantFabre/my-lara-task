@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -36,13 +37,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Projets
     Route::apiResource('projects', ProjectController::class);
     
-    // Tâches
-    // Route::apiResource('tasks', TaskController::class);
-    // Route::post('tasks/{task}/complete', [TaskController::class, 'toggleComplete']);
-    // Route::post('tasks/{task}/assign', [TaskController::class, 'assign']);
-    // Route::post('tasks/{task}/add-comment', [TaskController::class, 'addComment']);
-    // Route::post('tasks/{task}/add-attachment', [TaskController::class, 'addAttachment']);
-    // Route::delete('tasks/{task}/attachments/{attachment}', [TaskController::class, 'deleteAttachment']);
+    // Tâches (API minimale pour MVP)
+    Route::apiResource('tasks', TaskController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 
 
     // Notifications

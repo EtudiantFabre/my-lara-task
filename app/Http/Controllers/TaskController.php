@@ -6,7 +6,6 @@ use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +15,6 @@ use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
-    use AuthorizesRequests;
-    
     /**
      * Display a listing of tasks.
      */
@@ -25,8 +22,7 @@ class TaskController extends Controller
     {
         $user = $request->user();
         
-        $query = Task::with(['project', 'creator', 'subTasks'])
-            ->where('assigned_to', $user->id);
+        $query = Task::with(['project', 'assignee', 'creator', 'subTasks']);
         
         // Filtrage par projet si spécifié
         if ($request->has('project_id')) {
@@ -37,6 +33,23 @@ class TaskController extends Controller
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
+        
+        // Filtrage par utilisateur assigné si spécifié
+        if ($request->has('assigned_to')) {
+            $query->where('assigned_to', $request->assigned_to);
+        }
+        
+        // Pour les employés, ne montrer que leurs tâches assignées
+        if ($user->isEmployee()) {
+            $query->where('assigned_to', $user->id);
+        } 
+        // Pour les managers, montrer les tâches de leurs projets
+        elseif ($user->isManager()) {
+            $query->whereHas('project', function($q) use ($user) {
+                $q->where('manager_id', $user->id);
+            });
+        }
+        // Les admins voient tout
         
         $tasks = $query->latest()->paginate($request->per_page ?? 15);
         
@@ -52,47 +65,6 @@ class TaskController extends Controller
     }
 
     /**
- * Show the form for creating a new task.
- */
-public function create(Project $project): JsonResponse
-{
-    $this->authorize('create', [Task::class, $project]);
-    
-    return response()->json([
-        'project' => $project->only(['id', 'title']),
-        'priorities' => ['low', 'medium', 'high'],
-        'statuses' => [
-            'not_started' => 'Non commencé',
-            'in_progress' => 'En cours',
-            'on_hold' => 'En attente',
-            'completed' => 'Terminé',
-            'cancelled' => 'Annulé'
-        ],
-        'due_date' => now()->addDays(7)->format('Y-m-d') // Date d'échéance par défaut : 7 jours à partir d'aujourd'hui
-    ]);
-}
-
-    /**
-     * Show the form for editing the specified task.
-     */
-    public function edit(Task $task): JsonResponse
-    {
-        $this->authorize('update', $task);
-        
-        return response()->json([
-            'task' => new TaskResource($task->load(['project'])),
-            'priorities' => ['low', 'medium', 'high'],
-            'statuses' => [
-                'not_started' => 'Non commencé',
-                'in_progress' => 'En cours',
-                'on_hold' => 'En attente',
-                'completed' => 'Terminé',
-                'cancelled' => 'Annulé'
-            ]
-        ]);
-    }
-
-    /**
      * Store a newly created task in storage.
      */
     public function store(Request $request): JsonResponse
@@ -101,22 +73,16 @@ public function create(Project $project): JsonResponse
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id' => 'required|exists:projects,id',
-            'priority' => ['required', Rule::in(['low', 'medium', 'high'])],
-            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
-            'due_date' => 'required|date|after_or_equal:today',
-            'estimated_hours' => 'nullable|numeric|min:0',
+            'assigned_to' => ['sometimes', 'exists:users,id'],
+            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
+            'due_date' => 'nullable|date|after_or_equal:today',
+            'estimated_time' => 'required|numeric|min:0',
         ]);
         
         try {
             $validated['created_by'] = Auth::id();
-            $validated['assigned_to'] = Auth::id(); // L'utilisateur connecté est automatiquement assigné
+            $validated['assigned_to'] = $validated['assigned_to'] ?? Auth::id();
             $validated['status'] = $validated['status'] ?? 'not_started';
-            
-            // Mapper estimated_hours vers estimated_time
-            if (isset($validated['estimated_hours'])) {
-                $validated['estimated_time'] = $validated['estimated_hours'];
-                unset($validated['estimated_hours']);
-            }
             
             $task = Task::create($validated);
             
@@ -174,23 +140,20 @@ public function create(Project $project): JsonResponse
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'project_id' => 'sometimes|exists:projects,id',
-            'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
-            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
+            'assigned_to' => ['sometimes', 'exists:users,id'],
+            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'due_date' => 'sometimes|date|after_or_equal:today',
-            'estimated_hours' => 'nullable|numeric|min:0',
+            'estimated_time' => 'sometimes|numeric|min:0',
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         
         try {
-            // Toujours forcer l'assignation à l'utilisateur connecté
-            $validated['assigned_to'] = Auth::id();
+            $task->update($validated);
             
             // Si le statut est marqué comme terminé, mettre la progression à 100%
             if (isset($validated['status']) && $validated['status'] === 'completed') {
-                $validated['progress'] = 100;
+                $task->update(['progress' => 100]);
             }
-            
-            $task->update($validated);
             
             // Enregistrer l'activité
             activity()
@@ -200,14 +163,14 @@ public function create(Project $project): JsonResponse
                 ->log('updated');
             
             return response()->json([
-                'message' => 'Tâche mise à jour avec succès',
-                'data' => new TaskResource($task->load(['project', 'creator', 'subTasks']))
+                'message' => 'Task updated successfully',
+                'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
             ]);
             
         } catch (\Exception $e) {
             Log::error('Error updating task: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Erreur lors de la mise à jour de la tâche',
+                'message' => 'Error updating task',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -250,7 +213,7 @@ public function create(Project $project): JsonResponse
         $this->authorize('update', $task);
         
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
+            'status' => ['required', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         

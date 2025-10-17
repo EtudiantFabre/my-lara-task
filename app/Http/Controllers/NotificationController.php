@@ -3,47 +3,54 @@
 namespace App\Http\Controllers;
 
 use App\Models\Notification;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Liste des notifications de l'utilisateur courant
      */
-    public function index()
+    public function index(): JsonResponse
     {
-        //
+        $notifications = Notification::where('user_id', Auth::id())
+            ->latest()
+            ->paginate(20);
+
+        return response()->json(['data' => $notifications]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Nombre de non lues
      */
-    public function store(Request $request)
+    public function unreadCount(): JsonResponse
     {
-        //
+        $count = Notification::where('user_id', Auth::id())
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json(['count' => $count]);
     }
 
     /**
-     * Display the specified resource.
+     * Marquer une notification comme lue
      */
-    public function show(Notification $notification)
+    public function markAsRead(Notification $notification): JsonResponse
     {
-        //
+        abort_unless($notification->user_id === Auth::id(), 403);
+        $notification->update(['read_at' => now()]);
+        return response()->json(['message' => 'Notification lue']);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Marquer toutes les notifications comme lues
      */
-    public function update(Request $request, Notification $notification)
+    public function markAllAsRead(): JsonResponse
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Notification $notification)
-    {
-        //
+        Notification::where('user_id', Auth::id())
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+        return response()->json(['message' => 'Toutes les notifications sont marquées comme lues']);
     }
 }
