@@ -36,12 +36,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}/report', [ProjectController::class, 'report'])->name('projects.report');
     
     // Tâches
-<<<<<<< Current (Your changes)
-    Route::resource('projects.tasks', TaskController::class)->only(['index', 'create', 'store', 'update', 'destroy']);
-    Route::post('tasks/{task}/complete', [TaskController::class, 'toggleComplete'])->name('tasks.complete');
-    Route::post('tasks/{task}/start-timer', [TaskController::class, 'startTimer'])->name('tasks.timer.start');
-    Route::post('tasks/{task}/stop-timer', [TaskController::class, 'stopTimer'])->name('tasks.timer.stop');
-=======
     Route::resource('projects.tasks', TaskController::class)->only(['index', 'store', 'update', 'destroy']);
     // Création/affichage tâches (UI)
     Route::get('tasks/create', fn() => Inertia::render('Tasks/Create'))->name('tasks.create');
@@ -51,7 +45,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'task' => (new \App\Http\Resources\TaskResource($task))->toArray(request()),
         ]);
     })->name('tasks.show');
->>>>>>> Incoming (Background Agent changes)
     
     // Sous-tâches
     Route::prefix('tasks/{task}')->group(function () {

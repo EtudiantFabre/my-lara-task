@@ -52,4 +52,3 @@ const submit = () => {
   router.post(route('projects.tasks.store', { project: form.project_id }), form);
 };
 </script>
-

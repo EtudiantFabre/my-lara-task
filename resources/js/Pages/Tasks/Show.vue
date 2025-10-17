@@ -46,4 +46,3 @@ const toggleSubtask = async (st) => {
   st.status = st.status === 'completed' ? 'not_started' : 'completed';
 };
 </script>
-
