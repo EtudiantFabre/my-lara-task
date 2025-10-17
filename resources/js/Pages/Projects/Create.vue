@@ -123,7 +123,7 @@
 </template>
 
 <script setup>
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -158,18 +158,6 @@ const statusOptions = [
 const submit = () => {
   form.post(route('projects.store'), {
     preserveScroll: true,
-    onSuccess: () => {
-      // Afficher une notification de succès
-      toast({
-        title: 'Succès',
-        description: 'Le projet a été créé avec succès',
-        variant: 'success',
-      });
-      
-      // Rediriger vers la liste des projets
-      // Le contrôleur devrait déjà gérer la redirection avec l'ID du projet
-      router.visit(route('projects.index'));
-    },
     onError: (errors) => {
       let errorMessage = 'Une erreur est survenue lors de la création du projet';
       

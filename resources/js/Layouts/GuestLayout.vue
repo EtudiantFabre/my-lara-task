@@ -1,6 +1,26 @@
 <script setup lang="ts">
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
+import { Toaster } from '@/Components/ui/toast';
+import { useToast } from '@/Components/ui/toast/use-toast';
+import { watch } from 'vue';
+
+const { toast } = useToast();
+const page = usePage();
+
+watch(
+  () => page.props.flash as any,
+  (flash: any) => {
+    if (!flash) return;
+    if (flash.success) {
+      toast({ title: 'Succès', description: String(flash.success), variant: 'success' });
+    }
+    if (flash.error) {
+      toast({ title: 'Erreur', description: String(flash.error), variant: 'destructive' });
+    }
+  },
+  { immediate: true, deep: true }
+);
 </script>
 
 <template>
@@ -18,5 +38,6 @@ import { Link } from '@inertiajs/vue3';
         >
             <slot />
         </div>
+    <Toaster />
     </div>
 </template>
