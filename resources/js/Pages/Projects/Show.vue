@@ -725,7 +725,7 @@ const openSubTaskEdit = (task, st) => {
 
 const submitSubTaskEdit = () => {
   if (!selectedTask.value || !selectedSubTask.value) return;
-  subTaskEditForm.put(route('subtasks.update', { task: selectedTask.value.id, subTask: selectedSubTask.value.id }), {
+  subTaskEditForm.patch(route('subtasks.update', { task: selectedTask.value.id, subTask: selectedSubTask.value.id }), {
     preserveScroll: true,
     onSuccess: () => { showSubTaskEditModal.value = false; toast({ title: 'Succès', description: 'Sous‑tâche mise à jour', variant: 'success' }); reloadProject(); },
     onError: (errors) => { const msg = Object.values(errors || {}).flat().join('\n') || 'Mise à jour échouée'; toast({ title: 'Erreur', description: msg, variant: 'destructive' }); }
