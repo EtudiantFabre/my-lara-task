@@ -134,7 +134,7 @@ class GoogleCalendarController extends Controller
             
             // Créer un événement pour le projet
             $event = new Event([
-                'summary' => "[Projet] " . $project->name,
+                'summary' => "[Projet] " . $project->title,
                 'description' => $project->description,
                 'colorId' => $this->getRandomColorId(),
             ]);
@@ -144,16 +144,16 @@ class GoogleCalendarController extends Controller
             $start->setDateTime($project->start_date->toIso8601String());
             $event->setStart($start);
             
-            if ($project->end_date) {
+            if ($project->deadline) {
                 $end = new EventDateTime();
-                $end->setDateTime($project->end_date->toIso8601String());
+                $end->setDateTime($project->deadline->toIso8601String());
                 $event->setEnd($end);
             }
             
             // Ajouter une alerte à 50% du temps alloué
-            if ($project->start_date && $project->end_date) {
+            if ($project->start_date && $project->deadline) {
                 $midpoint = $project->start_date->copy()->addHours(
-                    $project->start_date->diffInHours($project->end_date) / 2
+                    $project->start_date->diffInHours($project->deadline) / 2
                 );
                 
                 $reminder = new \Google_Service_Calendar_EventReminder();
@@ -242,8 +242,8 @@ class GoogleCalendarController extends Controller
             $start->setDateTime($task->due_date->toIso8601String());
             $event->setStart($start);
             
-            if ($task->estimated_hours) {
-                $endDate = $task->due_date->copy()->addHours($task->estimated_hours);
+            if ($task->estimated_time) {
+                $endDate = $task->due_date->copy()->addHours($task->estimated_time);
                 $end = new EventDateTime();
                 $end->setDateTime($endDate->toIso8601String());
                 $event->setEnd($end);

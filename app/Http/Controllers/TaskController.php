@@ -73,31 +73,15 @@ class TaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id' => 'required|exists:projects,id',
-            'assigned_to' => [
-                'required',
-                'exists:users,id',
-                function ($attribute, $value, $fail) use ($request) {
-                    // Vérifier que l'utilisateur assigné est bien un employé
-                    $user = User::find($value);
-                    if (!$user || !$user->isEmployee()) {
-                        $fail('The selected user is not an employee.');
-                    }
-                    
-                    // Vérifier que l'utilisateur assigné fait partie du projet
-                    $project = Project::find($request->project_id);
-                    if ($project && $project->employee_id !== $value) {
-                        $fail('The selected employee is not assigned to this project.');
-                    }
-                },
-            ],
-            'priority' => ['required', Rule::in(['low', 'medium', 'high'])],
-            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
-            'due_date' => 'required|date|after_or_equal:today',
-            'estimated_hours' => 'nullable|numeric|min:0',
+            'assigned_to' => ['sometimes', 'exists:users,id'],
+            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
+            'due_date' => 'nullable|date|after_or_equal:today',
+            'estimated_time' => 'required|numeric|min:0',
         ]);
         
         try {
             $validated['created_by'] = Auth::id();
+            $validated['assigned_to'] = $validated['assigned_to'] ?? Auth::id();
             $validated['status'] = $validated['status'] ?? 'not_started';
             
             $task = Task::create($validated);
@@ -156,28 +140,10 @@ class TaskController extends Controller
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'project_id' => 'sometimes|exists:projects,id',
-            'assigned_to' => [
-                'sometimes',
-                'exists:users,id',
-                function ($attribute, $value, $fail) use ($task, $request) {
-                    // Vérifier que l'utilisateur assigné est bien un employé
-                    $user = User::find($value);
-                    if (!$user || !$user->isEmployee()) {
-                        $fail('The selected user is not an employee.');
-                    }
-                    
-                    // Vérifier que l'utilisateur assigné fait partie du projet
-                    $projectId = $request->project_id ?? $task->project_id;
-                    $project = Project::find($projectId);
-                    if ($project && $project->employee_id !== $value) {
-                        $fail('The selected employee is not assigned to this project.');
-                    }
-                },
-            ],
-            'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
-            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
+            'assigned_to' => ['sometimes', 'exists:users,id'],
+            'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'due_date' => 'sometimes|date|after_or_equal:today',
-            'estimated_hours' => 'nullable|numeric|min:0',
+            'estimated_time' => 'sometimes|numeric|min:0',
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         
@@ -247,7 +213,7 @@ class TaskController extends Controller
         $this->authorize('update', $task);
         
         $validated = $request->validate([
-            'status' => ['required', Rule::in(['not_started', 'in_progress', 'on_hold', 'completed', 'cancelled'])],
+            'status' => ['required', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         

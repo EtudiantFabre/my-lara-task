@@ -22,10 +22,8 @@ class ProjectPolicy
      */
     public function view(User $user, Project $project): bool
     {
-        // L'employé ou le manager peut voir le projet
-        return $user->id === $project->employee_id || 
-               $user->id === $project->manager_id ||
-               $user->isAdmin();
+        // L'utilisateur propriétaire peut voir le projet
+        return $user->id === $project->user_id || $user->isAdmin();
     }
 
     /**
@@ -33,8 +31,8 @@ class ProjectPolicy
      */
     public function create(User $user): bool
     {
-        // Seuls les managers et les admins peuvent créer des projets
-        return $user->isManager() || $user->isAdmin();
+        // Tout utilisateur authentifié peut créer ses projets (MVP)
+        return true;
     }
 
     /**
@@ -42,8 +40,7 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
-        // Le manager responsable ou un admin peut mettre à jour le projet
-        return $user->id === $project->user_id;
+        return $user->id === $project->user_id || $user->isAdmin();
     }
 
     /**
@@ -51,8 +48,7 @@ class ProjectPolicy
      */
     public function delete(User $user, Project $project): bool
     {
-        // Seul l'admin peut supprimer un projet
-        return $user->id === $project->user_id;
+        return $user->id === $project->user_id || $user->isAdmin();
     }
 
     /**
@@ -78,7 +74,6 @@ class ProjectPolicy
      */
     public function assignEmployee(User $user, Project $project): bool
     {
-        // Seul le manager responsable ou un admin peut assigner des employés
-        return $user->id === $project->manager_id || $user->isAdmin();
+        return $user->id === $project->user_id || $user->isAdmin();
     }
 }

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('message');
             $table->timestamp('sent_at')->nullable();
+            $table->timestamp('read_at')->nullable();
             
             // Clés étrangères
             $table->foreignUuid('user_id')->constrained()->onDelete('cascade');

@@ -22,9 +22,9 @@ class TaskPolicy
      */
     public function view(User $user, Task $task): bool
     {
-        // L'employé assigné, le manager du projet ou un admin peut voir la tâche
+        // L'employé assigné, le propriétaire du projet ou un admin peut voir la tâche
         return $user->id === $task->assigned_to || 
-               $user->id === $task->project->manager_id ||
+               $user->id === $task->project->user_id ||
                $user->isAdmin();
     }
 
@@ -33,8 +33,8 @@ class TaskPolicy
      */
     public function create(User $user): bool
     {
-        // Seuls les managers et les admins peuvent créer des tâches
-        return $user->isManager() || $user->isAdmin();
+        // Utilisateurs authentifiés (limité par contrôleurs aux projets à eux)
+        return true;
     }
 
     /**
@@ -42,9 +42,8 @@ class TaskPolicy
      */
     public function update(User $user, Task $task): bool
     {
-        // L'employé assigné, le manager du projet ou un admin peut mettre à jour la tâche
         return $user->id === $task->assigned_to || 
-               $user->id === $task->project->manager_id ||
+               $user->id === $task->project->user_id ||
                $user->isAdmin();
     }
 
@@ -53,8 +52,7 @@ class TaskPolicy
      */
     public function delete(User $user, Task $task): bool
     {
-        // Seul le manager du projet ou un admin peut supprimer une tâche
-        return $user->id === $task->project->manager_id || $user->isAdmin();
+        return $user->id === $task->project->user_id || $user->isAdmin();
     }
 
     /**
@@ -80,7 +78,6 @@ class TaskPolicy
      */
     public function assignEmployee(User $user, Task $task): bool
     {
-        // Seul le manager du projet ou un admin peut assigner des tâches
-        return $user->id === $task->project->manager_id || $user->isAdmin();
+        return $user->id === $task->project->user_id || $user->isAdmin();
     }
 }

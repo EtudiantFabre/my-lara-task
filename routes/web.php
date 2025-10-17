@@ -6,10 +6,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
-use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SubTaskController;
 use App\Http\Controllers\TaskController;
-use App\Http\Controllers\TimeTrackingController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -39,9 +37,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Tâches
     Route::resource('projects.tasks', TaskController::class)->only(['index', 'store', 'update', 'destroy']);
-    Route::post('tasks/{task}/complete', [TaskController::class, 'toggleComplete'])->name('tasks.complete');
-    Route::post('tasks/{task}/start-timer', [TaskController::class, 'startTimer'])->name('tasks.timer.start');
-    Route::post('tasks/{task}/stop-timer', [TaskController::class, 'stopTimer'])->name('tasks.timer.stop');
+    // Création/affichage tâches (UI)
+    Route::get('tasks/create', fn() => Inertia::render('Tasks/Create'))->name('tasks.create');
+    Route::get('tasks/{task}', function (\App\Models\Task $task) {
+        $task->load(['project:id,title', 'assignee:id,name,email', 'creator:id,name,email', 'subTasks']);
+        return Inertia::render('Tasks/Show', [
+            'task' => (new \App\Http\Resources\TaskResource($task))->toArray(request()),
+        ]);
+    })->name('tasks.show');
     
     // Sous-tâches
     Route::prefix('tasks/{task}')->group(function () {
@@ -52,8 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Gestion des positions (drag & drop)
-    Route::patch('/tasks/{task}/move', [TaskController::class, 'move'])->name('tasks.move');
-    Route::patch('/subtasks/{subTask}/move', [SubTaskController::class, 'move'])->name('subtasks.move');
+    // drag & drop non requis pour le MVP, routes retirées
 
     // Suivi du temps
     Route::resource('time-entries', TimeEntryController::class);
