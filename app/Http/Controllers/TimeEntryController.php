@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\TimeEntryResource;
+use App\Models\Project;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Task;
 use App\Models\TimeEntry;
@@ -25,13 +27,13 @@ class TimeEntryController extends Controller
             ->latest('start_time')
             ->paginate(15);
 
-        return \App\\Http\\Resources\\TimeEntryResource::collection($entries);
+        return TimeEntryResource::collection($entries);
     }
 
     /**
      * Crée une nouvelle entrée de temps
      */
-    public function store(Request $request): \App\\Http\\Resources\\TimeEntryResource
+    public function store(Request $request): TimeEntryResource
     {
         $validated = Validator::make($request->all(), [
             'task_id' => 'required|exists:tasks,id',
@@ -55,13 +57,13 @@ class TimeEntryController extends Controller
 
         $entry->save();
 
-        return new \App\\Http\\Resources\\TimeEntryResource($entry->load('task'));
+        return new TimeEntryResource($entry->load('task'));
     }
 
     /**
      * Met à jour une entrée de temps existante
      */
-    public function update(Request $request, TimeEntry $timeEntry): \App\\Http\\Resources\\TimeEntryResource
+    public function update(Request $request, TimeEntry $timeEntry): TimeEntryResource
     {
         $this->authorize('update', $timeEntry);
 
@@ -77,7 +79,7 @@ class TimeEntryController extends Controller
             'description' => $validated['description'] ?? $timeEntry->description,
         ]);
 
-        return new \App\\Http\\Resources\\TimeEntryResource($timeEntry->load('task'));
+        return new TimeEntryResource($timeEntry->load('task'));
     }
 
     /**
