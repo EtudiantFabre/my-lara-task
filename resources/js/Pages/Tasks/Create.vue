@@ -5,20 +5,23 @@
 
       <div class="bg-white p-6 rounded-lg shadow space-y-4">
         <div>
-          <label class="text-sm text-gray-700">Titre</label>
-          <Input v-model="form.title" placeholder="Titre de la tâche" />
+          <label class="text-sm text-gray-700">Titre <span class="text-red-500">*</span></label>
+          <Input v-model="form.title" placeholder="Titre de la tâche" required />
+          <p v-if="form.errors.title" class="text-sm text-red-600">{{ form.errors.title }}</p>
         </div>
         <div>
           <label class="text-sm text-gray-700">Description</label>
           <Textarea v-model="form.description" placeholder="Décrire la tâche" />
         </div>
         <div>
-          <label class="text-sm text-gray-700">Projet</label>
-          <Input v-model="form.project_id" placeholder="ID du projet" />
+          <label class="text-sm text-gray-700">Projet <span class="text-red-500">*</span></label>
+          <Input v-model="form.project_id" placeholder="ID du projet" required />
+          <p v-if="form.errors.project_id" class="text-sm text-red-600">{{ form.errors.project_id }}</p>
         </div>
         <div>
           <label class="text-sm text-gray-700">Échéance</label>
-          <Input type="date" v-model="form.due_date" />
+          <Input type="date" v-model="form.due_date" :min="new Date().toISOString().split('T')[0]" />
+          <p v-if="form.errors.due_date" class="text-sm text-red-600">{{ form.errors.due_date }}</p>
         </div>
         <div>
           <label class="text-sm text-gray-700">Temps estimé (heures)</label>
@@ -49,6 +52,8 @@ const form = useForm({
 });
 
 const submit = () => {
-  router.post(route('projects.tasks.store', { project: form.project_id }), form);
+  router.post(route('projects.tasks.store', { project: form.project_id }), form, {
+    onError: () => {},
+  });
 };
 </script>
