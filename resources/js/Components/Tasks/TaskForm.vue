@@ -11,9 +11,7 @@
           required
           :disabled="form.processing"
         />
-        <p v-if="form.errors.title" class="text-sm text-destructive">
-          {{ form.errors.title }}
-        </p>
+        <InputError :message="form.errors.title" class="mt-2" />
       </div>
 
       <!-- Project Selection -->

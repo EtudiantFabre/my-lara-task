@@ -16,7 +16,16 @@ import { cn } from '@/lib/utils';
 import QuickAddButton from '@/Components/Common/QuickAddButton.vue';
 import { Toaster } from '@/Components/ui/toast';
 import { useToast } from '@/Components/ui/toast/use-toast';
-import { usePage } from '@inertiajs/vue3';
+import { usePage, router } from '@inertiajs/vue3';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/Components/ui/dialog';
+import ProjectForm from '@/Components/Projects/ProjectForm.vue';
+import TaskForm from '@/Components/Tasks/TaskForm.vue';
 
 
 defineProps({
@@ -37,6 +46,26 @@ const navigation = [
 const activeClass = 'bg-primary/10 text-primary';
 const showNewProjectDialog = ref(false);
 const showNewTaskDialog = ref(false);
+
+const onProjectCreated = () => {
+  showNewProjectDialog.value = false;
+  toast({
+    title: 'Succès',
+    description: 'Le projet a été créé avec succès.',
+    variant: 'success',
+  });  
+  router.reload({ only: ['projects'] });
+};
+
+const onTaskCreated = () => {
+  showNewTaskDialog.value = false;
+  toast({
+    title: 'Succès',
+    description: 'La tâche a été créée avec succès.',
+    variant: 'success',
+  });
+  router.reload({ only: ['tasks'] });
+};
 
 const { toast } = useToast();
 const page = usePage();
@@ -156,4 +185,48 @@ watch(
     </div>
     <Toaster />
   </div>
+  <!-- New Project Dialog -->
+<Dialog :open="showNewProjectDialog" @update:open="val => showNewProjectDialog = val">
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Nouveau projet</DialogTitle>
+      <DialogDescription>
+        Créez un nouveau projet pour organiser vos tâches.
+      </DialogDescription>
+    </DialogHeader>
+    <ProjectForm 
+      :submit-route="route('projects.store')"
+      :method="'post'"
+      :project="{
+        title: '',
+        description: '',
+        status: 'not_started',
+        start_date: new Date().toISOString().split('T')[0],
+        end_date: ''
+      }"
+      @success="onProjectCreated" 
+      @cancel="showNewProjectDialog = false"
+    />
+  </DialogContent>
+</Dialog>
+
+<!-- New Task Dialog -->
+<Dialog :open="showNewTaskDialog" @update:open="val => showNewTaskDialog = val">
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Nouvelle tâche</DialogTitle>
+      <DialogDescription>
+        Ajoutez une nouvelle tâche à votre liste.
+      </DialogDescription>
+    </DialogHeader>
+    <TaskForm 
+      :submit-route="route('tasks.store')"
+      :projects="page.props.auth.user.projects || []"
+      :initial-project-id="page.props.project?.id"
+      :cancel-route="route('dashboard')"
+      @success="onTaskCreated" 
+      @cancel="showNewTaskDialog = false"
+    />
+  </DialogContent>
+</Dialog>
 </template>

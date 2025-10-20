@@ -11,9 +11,7 @@
           required
           :disabled="form.processing"
         />
-        <p v-if="form.errors.title" class="text-sm text-destructive">
-          {{ form.errors.title }}
-        </p>
+        <InputError :message="form.errors.title" class="mt-2" />
       </div>
 
       <!-- Project Status -->
@@ -45,17 +43,18 @@
         />
       </div>
 
-      <!-- End Date -->
       <div class="space-y-2">
-        <Label for="end_date">Date de fin prévue</Label>
+        <Label for="progress">Progression (%)</Label>
         <Input
-          id="end_date"
-          v-model="form.end_date"
-          type="date"
-          :min="form.start_date"
+          id="progress"
+          v-model="form.progress"
+          type="number"
+          min="0"
+          max="100"
           required
           :disabled="form.processing"
         />
+        <InputError :message="form.errors.progress" class="mt-2" />
       </div>
 
       <!-- Description -->
@@ -110,7 +109,8 @@ const props = defineProps({
       description: '',
       status: 'not_started',
       start_date: new Date().toISOString().split('T')[0],
-      end_date: '',
+      deadline: '',
+      progress: 0,
     }),
   },
   submitRoute: {
@@ -132,7 +132,8 @@ const form = useForm({
   description: props.project.description,
   status: props.project.status,
   start_date: props.project.start_date,
-  end_date: props.project.end_date,
+  deadline: props.project.deadline,
+  progress: props.project.progress,
 });
 
 const submit = () => {
