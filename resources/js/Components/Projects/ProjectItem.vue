@@ -10,7 +10,7 @@
       <div class="min-w-0 flex-1">
         <h3 class="text-sm font-medium truncate">
           <Link :href="route('projects.show', project.id)" class="hover:underline">
-            {{ project.name }}
+            {{ project.title }}
           </Link>
         </h3>
         <p class="text-sm text-muted-foreground">

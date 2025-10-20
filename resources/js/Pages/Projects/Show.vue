@@ -597,7 +597,7 @@ const toInputDate = (d) => {
   try { return format(new Date(d), 'yyyy-MM-dd'); } catch { return d; }
 };
 
-console.log(`props.project: ${JSON.stringify(props.project)}`);
+//console.log(`props.project: ${JSON.stringify(props.project)}`);
 
 const form = useForm({
   title: props.project.title ?? '',

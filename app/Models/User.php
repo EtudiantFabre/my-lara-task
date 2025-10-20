@@ -107,9 +107,9 @@ class User extends Authenticatable
     /**
      * Projets auxquels l'utilisateur participe
      */
-    public function projects(): BelongsToMany
+    public function projects(): HasMany
     {
-        return $this->belongsToMany(Project::class);
+        return $this->hasMany(Project::class);
     }
 
     /**

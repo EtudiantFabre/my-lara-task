@@ -29,6 +29,7 @@
             <SelectItem value="cancelled">Annulé</SelectItem>
           </SelectContent>
         </Select>
+        <InputError :message="form.errors.status" class="mt-2" />
       </div>
 
       <!-- Start Date -->
@@ -41,8 +42,23 @@
           required
           :disabled="form.processing"
         />
+        <InputError :message="form.errors.start_date" class="mt-2" />
       </div>
 
+      <!-- Deadline -->
+      <div class="space-y-2">
+        <Label for="deadline">Date d'échéance</Label>
+        <Input
+          id="deadline"
+          v-model="form.deadline"
+          type="date"
+          :min="form.start_date"
+          :disabled="form.processing"
+        />
+        <InputError :message="form.errors.deadline" class="mt-2" />
+      </div>
+
+      <!-- Progress -->
       <div class="space-y-2">
         <Label for="progress">Progression (%)</Label>
         <Input
@@ -66,6 +82,7 @@
           rows="4"
           :disabled="form.processing"
         />
+        <InputError :message="form.errors.description" class="mt-2" />
       </div>
     </div>
 
@@ -92,6 +109,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
+import InputError from '@/Components/InputError.vue';
 import { Loader2 } from 'lucide-vue-next';
 import {
   Select,
@@ -100,6 +118,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/Components/ui/select';
+import { toast } from '../ui/toast/use-toast';
+import { watch } from 'vue';
 
 const props = defineProps({
   project: {
@@ -137,10 +157,52 @@ const form = useForm({
 });
 
 const submit = () => {
+  //console.log('Form submitted with data:', form.data());
+
   if (props.method === 'put') {
-    form.put(props.submitRoute);
+    form.put(props.submitRoute, {
+      onSuccess: () => {
+        toast({
+          title: 'Succès',
+          description: 'Le projet a été mis à jour avec succès.',
+        });
+      },
+      onError: (errors) => {
+        console.error('Error updating project:', errors);
+        toast({
+          title: 'Erreur',
+          description: 'Une erreur est survenue lors de la mise à jour du projet.',
+          variant: 'destructive',
+        });
+      },
+    });
   } else {
-    form.post(props.submitRoute);
+    form.post(props.submitRoute, {
+      onSuccess: () => {
+        toast({
+          title: 'Succès',
+          description: 'Le projet a été créé avec succès.',
+        });
+        form.reset();
+      },
+      onError: (errors) => {
+        console.error('Error creating project:', errors);
+        toast({
+          title: 'Erreur',
+          description: 'Une erreur est survenue lors de la création du projet.',
+          variant: 'destructive',
+        });
+      },
+    });
   }
 };
+
+// Log form changes
+watch(
+  () => form.data(),
+  (newValue) => {
+    //console.log('Form data changed:', newValue);
+  },
+  { deep: true }
+);
 </script>

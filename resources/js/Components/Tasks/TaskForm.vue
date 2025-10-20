@@ -117,6 +117,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
+import InputError from '@/Components/InputError.vue';
 import { Loader2, Flag, AlertTriangle, ArrowDown } from 'lucide-vue-next';
 import {
   Select,
@@ -169,6 +170,12 @@ const priorities = [
   { value: 'medium', label: 'Moyenne', icon: Flag },
   { value: 'high', label: 'Haute', icon: AlertTriangle },
 ];
+
+// Log pour déboguer
+onMounted(() => {
+  console.log('TaskForm - Projects reçus:', props.projects);
+  console.log('TaskForm - Task reçue:', props.task);
+});
 
 const form = useForm({
   title: props.task.title,

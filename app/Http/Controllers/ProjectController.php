@@ -51,6 +51,9 @@ class ProjectController extends Controller
             'progress' => 'required|numeric|min:0|max:100',
         ]);
 
+        print_r("Données validées : ");
+        print_r($validated);
+
         // Use ownedProjects (one-to-many) to avoid inserting into pivot table
         $project = $request->user()->ownedProjects()->create([
             'title' => $validated['title'],

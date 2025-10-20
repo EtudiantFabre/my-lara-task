@@ -219,14 +219,24 @@ watch(
         Ajoutez une nouvelle tâche à votre liste.
       </DialogDescription>
     </DialogHeader>
-    <TaskForm 
-      :submit-route="route('tasks.store')"
-      :projects="page.props.auth.user.projects || []"
-      :initial-project-id="page.props.project?.id"
-      :cancel-route="route('dashboard')"
-      @success="onTaskCreated" 
-      @cancel="showNewTaskDialog = false"
-    />
+    <div v-if="page.props.auth.user.projects && page.props.auth.user.projects.length > 0">
+      <TaskForm 
+        :submit-route="route('projects.tasks.store', { project: page.props.auth.user.projects[0].id })"
+        :projects="page.props.auth.user.projects || []"
+        :initial-project-id="page.props.auth.user.projects[0].id"
+        :cancel-route="route('dashboard')"
+        @success="onTaskCreated" 
+        @cancel="showNewTaskDialog = false"
+      />
+    </div>
+    <div v-else class="p-4 text-center">
+      <p class="text-sm text-muted-foreground">
+        Vous devez d'abord créer un projet avant d'ajouter des tâches.
+      </p>
+      <Button @click="showNewProjectDialog = true" class="mt-4">
+        Créer un projet
+      </Button>
+    </div>
   </DialogContent>
 </Dialog>
 </template>
