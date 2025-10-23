@@ -112,7 +112,7 @@
 
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, PropType } from 'vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import { Label } from '@/Components/ui/label';
@@ -127,6 +127,12 @@ import {
   SelectValue,
 } from '@/Components/ui/select';
 
+interface Project {
+  id: string | number;
+  title: string;
+  // Add other project properties as needed
+}
+
 const props = defineProps({
   task: {
     type: Object,
@@ -140,7 +146,7 @@ const props = defineProps({
     }),
   },
   projects: {
-    type: Array,
+    type: Array as PropType<Project[]>,
     required: true,
   },
   initialProjectId: {
