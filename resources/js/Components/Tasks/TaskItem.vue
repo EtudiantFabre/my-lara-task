@@ -48,11 +48,11 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle']);
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string) => {
   return format(new Date(dateString), 'd MMM yyyy', { locale: fr });
 };
 
-const toggleComplete = async (checked) => {
+const toggleComplete = async (checked: boolean) => {
   emit('toggle', props.task.id, checked);
 };
 </script>
