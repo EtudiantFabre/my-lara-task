@@ -69,35 +69,33 @@ import ProjectItem from "@/Components/Projects/ProjectItem.vue";
 import TaskItem from "@/Components/Tasks/TaskItem.vue";
 import StatCard from "@/Components/Common/StatCard.vue";
 import EmptyState from "@/Components/Common/EmptyState.vue";
+import { FolderPlus } from 'lucide-vue-next';
 
-const props = defineProps({
-    stats: {
-        type: Object,
-        required: true,
-    },
-    recentProjects: {
-        type: Array,
-        required: true,
-    },
-    upcomingTasks: {
-        type: Array,
-        required: true,
-    },
-});
+interface Project {
+    id: string | number;
+    title: string;
+    // Add other project properties here as needed
+}
 
-const formatKey = (key) => {
+const props = defineProps<{
+    stats: Record<string, number>;
+    recentProjects: Project[];
+    upcomingTasks: any[]; // Consider defining a proper type for tasks as well
+}>();
+
+const formatKey = (key: string): string => {
     return key
         .split("_")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
 };
 
-const getIcon = (key) => {
+const getIcon = (key: string): string => {
     const icons = {
         total_projects: "Folder",
         total_tasks: "ListTodo",
         completed_tasks: "CheckCircle",
     };
-    return icons[key] || "Circle";
+    return icons[key as keyof typeof icons] || "Circle";
 };
 </script>
