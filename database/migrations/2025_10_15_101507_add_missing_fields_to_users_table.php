@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('phone', 20)->nullable()->after('position');
             $table->string('department')->nullable()->after('phone');
             $table->date('hire_date')->nullable()->after('department');
-            $table->string('google_id')->nullable()->after('hire_date');
+            #$table->string('google_id')->nullable()->after('hire_date');
         });
     }
 

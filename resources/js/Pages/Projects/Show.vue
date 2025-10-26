@@ -95,7 +95,8 @@
                   v-model.number="form.progress" 
                   min="0" 
                   max="100" 
-                  class="w-20" 
+                  class="w-20"
+                  :placeholder="project.progress"
                 />
                 <span class="text-sm text-muted-foreground">%</span>
               </div>

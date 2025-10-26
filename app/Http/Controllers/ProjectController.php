@@ -22,6 +22,7 @@ class ProjectController extends Controller
         $user = auth()->user();
         $projects = Project::where('user_id', $user->id)
             ->withCount('tasks')
+            ->with('tasks')
             ->latest()
             ->get();
 
@@ -67,8 +68,8 @@ class ProjectController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
-        return redirect()->route('projects.show', $project->id)
-            ->with('success', 'Projet créé avec succès');
+        return redirect()->route('projects.index')
+                ->with('success', 'Projet créé avec succès');
     }
 
     /**

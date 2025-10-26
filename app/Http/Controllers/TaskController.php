@@ -79,7 +79,7 @@ class TaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id' => $routeProject ? 'sometimes' : 'required|exists:projects,id',
-            'assigned_to' => ['sometimes', 'exists:users,id'],
+            // 'assigned_to' => ['sometimes', 'exists:users,id'],
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'due_date' => 'nullable|date|after_or_equal:today',
             // Accept either estimated_time (backend) or estimated_hours (frontend form)

@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SubTaskController;
 use App\Http\Controllers\TaskController;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\GoogleCalendarController;
@@ -14,12 +15,7 @@ use Laravel\Socialite\Facades\Socialite;
 
 
 Route::get('/auth/redirect', function () {
-    return Socialite::driver('google')
-        ->scopes(['https://www.googleapis.com/auth/calendar'])
-        ->with([
-                'prompt' => 'consent',
-            ])
-        ->redirect();
+    return Socialite::driver('google')->redirect();
 });
 
 Route::get('/auth/refresh', function () {
@@ -42,20 +38,26 @@ Route::get('/auth/refresh', function () {
 // Route de redirection vers Google pour l'authentification
 Route::get('google/auth', [GoogleCalendarController::class, 'redirectToGoogle'])->name('google.auth');
 
-// Route de callback après l'authentification
 Route::get('/auth/callback', function () {
     $googleUser = Socialite::driver('google')->user();
 
-    Storage::disk('local')->put('google/oauth-token.json', $googleUser->token);
-    if ($googleUser->refreshToken) {
-        Storage::disk('local')->put('google/oauth-refresh-token.json', $googleUser->refreshToken);
-    }
+    // Supprime ou commente cette ligne
+    //dd($googleUser);
 
-    $expiresIn = $googleUser->expiresIn;
-
-    Auth::login($googleUser);
+    $user = User::updateOrCreate([
+        'google_id' => $googleUser->id,
+    ], [
+        'name' => $googleUser->name,
+        'email' => $googleUser->email,
+        'google_token' => $googleUser->token,
+        'google_refresh_token' => $googleUser->refreshToken,
+    ]);
+ 
+    Auth::login($user);
+ 
     return redirect('/dashboard');
 });
+
 
 
 

@@ -46,6 +46,10 @@ const navigation = [
     { name: "Profil", href: route("profile.edit"), icon: Settings },
 ];
 
+const goToCreateProject = () => {
+  router.visit(route('projects.create'));
+};
+
 const activeClass = "bg-gray-200/80 text-primary font-semibold";
 
 const isActive = (path: string):boolean => {
@@ -181,8 +185,7 @@ watch(
                     <slot />
                     <!-- Floating action button -->
                     <div class="fixed bottom-6 right-6 z-50">
-                        <QuickAddButton @add-project="showNewProjectDialog = true"
-                            @add-task="showNewTaskDialog = true" />
+                        <QuickAddButton @add-project="goToCreateProject"/>
                     </div>
                 </div>
             </main>

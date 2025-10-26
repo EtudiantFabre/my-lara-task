@@ -12,10 +12,6 @@
         <FolderPlus class="mr-2 h-4 w-4" />
         <span>Nouveau projet</span>
       </DropdownMenuItem>
-      <DropdownMenuItem @click="$emit('addTask')">
-        <ListPlus class="mr-2 h-4 w-4" />
-        <span>Nouvelle tâche</span>
-      </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
 </template>
@@ -27,8 +23,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+
   DropdownMenuTrigger,
 } from '@/Components/ui/dropdown-menu';
 
-defineEmits(['addProject', 'addTask']);
+
+defineEmits(['addProject',]);
 </script>
