@@ -5,16 +5,21 @@ namespace App\Http\Controllers;
 use App\Http\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
-use App\Models\User;
+use App\Services\TaskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TaskController extends Controller
 {
+    protected $taskService;
+
+    public function __construct(TaskService $taskService)
+    {
+        $this->taskService = $taskService;
+    }
+
     /**
      * Display a listing of tasks.
      */
@@ -24,7 +29,7 @@ class TaskController extends Controller
         
         $query = Task::with(['project', 'assignee', 'creator', 'subTasks']);
         
-        // Filtrage par projet depuis la route nested (projects/{project}/tasks) ou via query param
+        // Filter by project
         $routeProject = $project ?? $request->route('project');
         if ($routeProject) {
             $projectId = is_object($routeProject) ? $routeProject->id : (string) $routeProject;
@@ -33,27 +38,24 @@ class TaskController extends Controller
             $query->where('project_id', $request->project_id);
         }
         
-        // Filtrage par statut si spécifié
+        // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
         
-        // Filtrage par utilisateur assigné si spécifié
+        // Filter by assigned user
         if ($request->has('assigned_to')) {
             $query->where('assigned_to', $request->assigned_to);
         }
         
-        // Pour les employés, ne montrer que leurs tâches assignées
+        // Role-based filtering
         if ($user->isEmployee()) {
             $query->where('assigned_to', $user->id);
-        } 
-        // Pour les managers, montrer les tâches de leurs projets
-        elseif ($user->isManager()) {
+        } elseif ($user->isManager()) {
             $query->whereHas('project', function($q) use ($user) {
                 $q->where('manager_id', $user->id);
             });
         }
-        // Les admins voient tout
         
         $tasks = $query->latest()->paginate($request->per_page ?? 15);
         
@@ -79,58 +81,44 @@ class TaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id' => $routeProject ? 'sometimes' : 'required|exists:projects,id',
-            // 'assigned_to' => ['sometimes', 'exists:users,id'],
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
+            'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
             'due_date' => 'nullable|date|after_or_equal:today',
-            // Accept either estimated_time (backend) or estimated_hours (frontend form)
             'estimated_time' => 'sometimes|numeric|min:0',
             'estimated_hours' => 'sometimes|numeric|min:0',
         ]);
         
         try {
-            // Prefer project from nested route (can be model or string id)
-            $projectId = null;
+            // Determine project
             if ($routeProject) {
                 $projectId = is_object($routeProject) ? $routeProject->id : (string) $routeProject;
+                $project = Project::findOrFail($projectId);
             } else {
-                $projectId = $validated['project_id'] ?? null;
-            }
-            $validated['project_id'] = $projectId;
-
-            // Normalize estimated_time
-            if (!array_key_exists('estimated_time', $validated)) {
-                $validated['estimated_time'] = (float) ($validated['estimated_hours'] ?? 0);
+                $project = Project::findOrFail($validated['project_id']);
             }
 
-            $validated['created_by'] = Auth::id();
-            $validated['assigned_to'] = $validated['assigned_to'] ?? Auth::id();
-            $validated['status'] = $validated['status'] ?? 'not_started';
+            $task = $this->taskService->createTask($validated, $project);
             
-            $task = Task::create($validated);
-            
-            // Enregistrer l'activité
-            activity()
-                ->causedBy(Auth::user())
-                ->performedOn($task)
-                ->withProperties(['attributes' => $validated])
-                ->log('created');
-            
-            // Return JSON for API, redirect for Inertia/web
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Task created successfully',
-                    'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
+                    'data' => new TaskResource($task)
                 ], 201);
             }
-            return redirect()->route('projects.show', $projectId)
-                ->with('success', 'Tâche créée avec succès');
             
+            return redirect()->route('projects.show', $project->id)
+                ->with('success', 'Tâche créée avec succès');
         } catch (\Exception $e) {
             Log::error('Error creating task: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error creating task',
-                'error' => $e->getMessage()
-            ], 500);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error creating task',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors de la création de la tâche']);
         }
     }
 
@@ -139,19 +127,10 @@ class TaskController extends Controller
      */
     public function show(Task $task): JsonResponse
     {
+        $task = $this->taskService->getTaskWithRelations($task);
         
         return response()->json([
-            'data' => new TaskResource(
-                $task->load([
-                    'project', 
-                    'assignee', 
-                    'creator', 
-                    'subTasks',
-                    'activityLogs' => function($query) {
-                        $query->with('user')->latest()->take(10);
-                    }
-                ])
-            )
+            'data' => new TaskResource($task)
         ]);
     }
 
@@ -160,9 +139,8 @@ class TaskController extends Controller
      */
     public function update(Request $request, Project $project, Task $task)
     {
-        // Ensure the task belongs to the nested project
-        $projectId = $project->id;
-        abort_unless($task->project_id === $projectId, 404);
+        // Ensure the task belongs to the project
+        abort_unless($task->project_id === $project->id, 404);
         
         $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
@@ -170,6 +148,7 @@ class TaskController extends Controller
             'project_id' => 'sometimes|exists:projects,id',
             'assigned_to' => ['sometimes', 'exists:users,id'],
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
+            'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
             'due_date' => 'sometimes|date|after_or_equal:today',
             'estimated_time' => 'sometimes|numeric|min:0',
             'estimated_hours' => 'sometimes|numeric|min:0',
@@ -177,39 +156,27 @@ class TaskController extends Controller
         ]);
         
         try {
-            // Normalize estimated_time on update
-            if (!array_key_exists('estimated_time', $validated) && array_key_exists('estimated_hours', $validated)) {
-                $validated['estimated_time'] = (float) $validated['estimated_hours'];
-            }
-
-            $task->update($validated);
-            
-            // Si le statut est marqué comme terminé, mettre la progression à 100%
-            if (isset($validated['status']) && $validated['status'] === 'completed') {
-                $task->update(['progress' => 100]);
-            }
-            
-            // Enregistrer l'activité
-            activity()
-                ->causedBy(Auth::user())
-                ->performedOn($task)
-                ->withProperties(['changes' => $validated])
-                ->log('updated');
+            $task = $this->taskService->updateTask($task, $validated);
             
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Task updated successfully',
-                    'data' => new TaskResource($task->load(['project', 'assignee', 'creator', 'subTasks']))
+                    'data' => new TaskResource($task)
                 ]);
             }
-            return back()->with('success', 'Tâche mise à jour avec succès');
             
+            return back()->with('success', 'Tâche mise à jour avec succès');
         } catch (\Exception $e) {
             Log::error('Error updating task: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error updating task',
-                'error' => $e->getMessage()
-            ], 500);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error updating task',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors de la mise à jour de la tâche']);
         }
     }
 
@@ -218,35 +185,31 @@ class TaskController extends Controller
      */
     public function destroy(Request $request, Project $project, Task $task)
     {
-        // Ensure the task belongs to the nested project
-        $projectId = $project->id;
-        abort_unless($task->project_id === $projectId, 404);
+        // Ensure the task belongs to the project
+        abort_unless($task->project_id === $project->id, 404);
         
         try {
-            // Enregistrer l'activité avant la suppression
-            activity()
-                ->causedBy(Auth::user())
-                ->performedOn($task)
-                ->log('deleted');
-            
-            $task->delete();
+            $this->taskService->deleteTask($task);
             
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Task deleted successfully'
                 ], 204);
             }
-            // Redirect to project page if nested, else to projects index
-            return redirect()->route('projects.show', $projectId)
+            
+            return redirect()->route('projects.show', $project->id)
                 ->with('success', 'Tâche supprimée avec succès');
-            
-            
         } catch (\Exception $e) {
             Log::error('Error deleting task: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error deleting task',
-                'error' => $e->getMessage()
-            ], 500);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error deleting task',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors de la suppression de la tâche']);
         }
     }
     
@@ -255,32 +218,22 @@ class TaskController extends Controller
      */
     public function updateStatus(Request $request, Task $task): JsonResponse
     {
-        
         $validated = $request->validate([
             'status' => ['required', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         
         try {
-            // Si le statut est marqué comme terminé, forcer la progression à 100%
-            if ($validated['status'] === 'completed') {
-                $validated['progress'] = 100;
-            }
-            
-            $task->update($validated);
-            
-            // Enregistrer l'activité
-            activity()
-                ->causedBy(Auth::user())
-                ->performedOn($task)
-                ->withProperties(['status' => $validated['status'], 'progress' => $validated['progress'] ?? null])
-                ->log('status_updated');
+            $task = $this->taskService->updateTaskStatus(
+                $task,
+                $validated['status'],
+                $validated['progress'] ?? null
+            );
             
             return response()->json([
                 'message' => 'Task status updated successfully',
-                'data' => new TaskResource($task->load(['project', 'assignee', 'creator']))
+                'data' => new TaskResource($task)
             ]);
-            
         } catch (\Exception $e) {
             Log::error('Error updating task status: ' . $e->getMessage());
             return response()->json([

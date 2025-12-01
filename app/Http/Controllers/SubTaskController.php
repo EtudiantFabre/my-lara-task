@@ -4,44 +4,56 @@ namespace App\Http\Controllers;
 
 use App\Models\SubTask;
 use App\Models\Task;
-use Illuminate\Http\JsonResponse;
+use App\Services\SubTaskService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class SubTaskController extends Controller
 {
+    protected $subTaskService;
+
+    public function __construct(SubTaskService $subTaskService)
+    {
+        $this->subTaskService = $subTaskService;
+    }
+
     /**
      * Store a newly created subtask for a task.
      */
     public function store(Request $request, Task $task)
     {
-
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            // Accepter estimated_time ou estimated_hours du front (nullable toléré)
             'estimated_time' => 'nullable|numeric|min:0',
             'estimated_hours' => 'nullable|numeric|min:0',
             'due_date' => 'nullable|date|after_or_equal:today',
             'assigned_to' => 'sometimes|exists:users,id',
         ]);
 
-        $validated['task_id'] = $task->id;
-        $validated['assigned_to'] = $validated['assigned_to'] ?? Auth::id();
-        $validated['status'] = 'not_started';
-        $validated['estimated_time'] = isset($validated['estimated_time'])
-            ? (float) $validated['estimated_time']
-            : (float) ($validated['estimated_hours'] ?? 0);
+        try {
+            $subTask = $this->subTaskService->createSubTask($validated, $task);
 
-        $subTask = SubTask::create($validated);
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'Sub-task created successfully',
-                'data' => $subTask,
-            ], 201);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Sub-task created successfully',
+                    'data' => $subTask,
+                ], 201);
+            }
+            
+            return back()->with('success', 'Sous-tâche créée');
+        } catch (\Exception $e) {
+            Log::error('Error creating subtask: ' . $e->getMessage());
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error creating subtask',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors de la création de la sous-tâche']);
         }
-        return back()->with('success', 'Sous-tâche créée');
     }
 
     /**
@@ -49,7 +61,6 @@ class SubTaskController extends Controller
      */
     public function update(Request $request, Task $task, SubTask $subTask)
     {
-
         abort_unless($subTask->task_id === $task->id, 404);
 
         $validated = $request->validate([
@@ -62,21 +73,29 @@ class SubTaskController extends Controller
             'status' => 'sometimes|in:not_started,in_progress,completed',
         ]);
 
-        if (!array_key_exists('estimated_time', $validated)) {
-            $validated['estimated_time'] = isset($validated['estimated_hours'])
-                ? (float) $validated['estimated_hours']
-                : null;
-        }
+        try {
+            $subTask = $this->subTaskService->updateSubTask($subTask, $validated);
 
-        $subTask->update($validated);
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'Sub-task updated successfully',
-                'data' => $subTask,
-            ]);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Sub-task updated successfully',
+                    'data' => $subTask,
+                ]);
+            }
+            
+            return back()->with('success', 'Sous-tâche mise à jour');
+        } catch (\Exception $e) {
+            Log::error('Error updating subtask: ' . $e->getMessage());
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error updating subtask',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors de la mise à jour de la sous-tâche']);
         }
-        return back()->with('success', 'Sous-tâche mise à jour');
     }
 
     /**
@@ -86,16 +105,29 @@ class SubTaskController extends Controller
     {
         abort_unless($subTask->task_id === $task->id, 404);
 
-        $subTask->status = $subTask->status === 'completed' ? 'not_started' : 'completed';
-        $subTask->save();
+        try {
+            $subTask = $this->subTaskService->toggleSubTaskStatus($subTask);
 
-        if (request()->expectsJson()) {
-            return response()->json([
-                'message' => 'Sub-task status toggled',
-                'data' => $subTask,
-            ]);
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'Sub-task status toggled',
+                    'data' => $subTask,
+                ]);
+            }
+            
+            return back()->with('success', 'Statut de la sous-tâche mis à jour');
+        } catch (\Exception $e) {
+            Log::error('Error toggling subtask status: ' . $e->getMessage());
+            
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error toggling subtask status',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors du changement de statut']);
         }
-        return back()->with('success', 'Statut de la sous-tâche mis à jour');
     }
 
     /**
@@ -105,11 +137,25 @@ class SubTaskController extends Controller
     {
         abort_unless($subTask->task_id === $task->id, 404);
 
-        $subTask->delete();
+        try {
+            $this->subTaskService->deleteSubTask($subTask);
 
-        if (request()->expectsJson()) {
-            return response()->json(['message' => 'Sub-task deleted successfully']);
+            if (request()->expectsJson()) {
+                return response()->json(['message' => 'Sub-task deleted successfully']);
+            }
+            
+            return back()->with('success', 'Sous-tâche supprimée');
+        } catch (\Exception $e) {
+            Log::error('Error deleting subtask: ' . $e->getMessage());
+            
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error deleting subtask',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['error' => 'Erreur lors de la suppression de la sous-tâche']);
         }
-        return back()->with('success', 'Sous-tâche supprimée');
     }
 }
