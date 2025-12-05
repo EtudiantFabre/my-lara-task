@@ -83,7 +83,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Projets
     Route::resource('projects', ProjectController::class);
-    Route::get('projects/{project}/report', [ProjectController::class, 'report'])->name('projects.report');
+    Route::get('projects/{project}/review', [ProjectController::class, 'review'])->name('projects.review');
+    Route::post('projects/{project}/review/complete', [ProjectController::class, 'completeReview'])->name('projects.review.complete');
     
     // Tâches
     Route::resource('projects.tasks', TaskController::class)->only(['index', 'store', 'update', 'destroy']);

@@ -81,6 +81,46 @@ class ProjectController extends Controller
     }
 
     /**
+     * Page de revue du projet (validation finale par le créateur)
+     */
+    public function review(Project $project)
+    {
+        $project = $this->projectService->getProjectWithTasks($project);
+
+        $this->authorize('update', $project); // le créateur peut réviser
+
+        return Inertia::render('Projects/Review', [
+            'project' => $project,
+            'allTasksCompleted' => $project->tasks->count() > 0 && $project->tasks->every(fn($t) => (float)$t->progress >= 100),
+            'isReviewed' => (bool) $project->reviewed,
+        ]);
+    }
+
+    /**
+     * Marquer le projet comme entièrement terminé après revue
+     */
+    public function completeReview(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
+
+        // Vérifier que toutes les tâches sont complètes
+        $project->load('tasks');
+        $allTasksCompleted = $project->tasks->count() > 0 && $project->tasks->every(fn($t) => (float)$t->progress >= 100);
+        if (!$allTasksCompleted) {
+            return back()->withErrors(['error' => 'Toutes les tâches ne sont pas complètes.']);
+        }
+
+        $project->reviewed = true;
+        $project->reviewed_at = now();
+        $project->reviewed_by = $request->user()->id;
+        $project->progress = 100;
+        $project->status = 'completed';
+        $project->save();
+
+        return redirect()->route('projects.show', $project)->with('success', 'Projet validé à 100%');
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, Project $project)

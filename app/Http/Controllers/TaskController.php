@@ -84,8 +84,8 @@ class TaskController extends Controller
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
             'due_date' => 'nullable|date|after_or_equal:today',
-            'estimated_time' => 'sometimes|numeric|min:0',
-            'estimated_hours' => 'sometimes|numeric|min:0',
+            'estimated_time' => 'nullable|numeric|min:0',
+            'estimated_hours' => 'nullable|numeric|min:0',
         ]);
         
         try {
@@ -150,8 +150,8 @@ class TaskController extends Controller
             'status' => ['sometimes', Rule::in(['not_started', 'in_progress', 'in_review', 'completed', 'blocked'])],
             'priority' => ['sometimes', Rule::in(['low', 'medium', 'high'])],
             'due_date' => 'sometimes|date|after_or_equal:today',
-            'estimated_time' => 'sometimes|numeric|min:0',
-            'estimated_hours' => 'sometimes|numeric|min:0',
+            'estimated_time' => 'nullable|numeric|min:0',
+            'estimated_hours' => 'nullable|numeric|min:0',
             'progress' => 'sometimes|numeric|min:0|max:100',
         ]);
         

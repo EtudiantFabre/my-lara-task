@@ -47,6 +47,12 @@
                             Enregistrer
                         </Button>
                     </template>
+                    <template v-if="showReviewButton">
+                        <Button @click="goToReview" variant="default">
+                            <ListChecks class="mr-2 h-4 w-4" />
+                            Revue finale
+                        </Button>
+                    </template>
                 </div>
             </div>
 
@@ -400,6 +406,32 @@
                                 >
                                     {{ taskEditForm.errors.description }}
                                 </p>
+                            </div>
+                            <div class="space-y-2">
+                                <Label for="priority_edit" :required="true"
+                                    >Priorité</Label
+                                >
+                                <Select
+                                    v-model="taskEditForm.priority"
+                                    required
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue
+                                            placeholder="Sélectionner une priorité"
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="low"
+                                            >Basse</SelectItem
+                                        >
+                                        <SelectItem value="medium"
+                                            >Moyenne</SelectItem
+                                        >
+                                        <SelectItem value="high"
+                                            >Haute</SelectItem
+                                        >
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="space-y-2">
@@ -835,6 +867,18 @@ const toInputDate = (d) => {
 
 //console.log(`props.project: ${JSON.stringify(props.project)}`);
 
+const showReviewButton = computed(() => {
+    const tasks = props.project?.tasks || [];
+    if (!props.canEdit) return false;
+    if (!tasks.length) return false;
+    const allTasksCompleted = tasks.every(t => (t?.progress ?? 0) >= 100);
+    return allTasksCompleted && !props.project?.reviewed;
+});
+
+const goToReview = () => {
+    router.visit(route('projects.review', props.project.id));
+};
+
 const form = useForm({
     title: props.project.title ?? "",
     description: props.project.description ?? "",
@@ -1063,12 +1107,14 @@ const submitSubTaskEdit = () => {
 };
 
 // Task edit
+// Task edit
 const taskEditForm = useForm({
     title: "",
     description: "",
     due_date: "",
     estimated_hours: null,
     status: "not_started",
+    priority: "medium",
 });
 const openTaskEditModal = (task) => {
     selectedTask.value = task;
@@ -1078,6 +1124,7 @@ const openTaskEditModal = (task) => {
     taskEditForm.due_date = toInputDate(task.due_date);
     taskEditForm.estimated_hours = task.estimated_time ?? null;
     taskEditForm.status = task.status || "not_started";
+    taskEditForm.priority = task.priority || "medium";
     showTaskEditModal.value = true;
 };
 

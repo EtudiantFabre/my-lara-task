@@ -21,6 +21,7 @@ class SubTaskService
             'status' => $data['status'] ?? 'not_started',
             'due_date' => $data['due_date'] ?? null,
             'estimated_time' => $data['estimated_time'] ?? $data['estimated_hours'] ?? 0,
+            'assigned_to' => $data['assigned_to'] ?? Auth::id(),
         ];
 
         $subTask = SubTask::create($subTaskData);

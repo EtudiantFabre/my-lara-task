@@ -67,10 +67,7 @@
                                     <button
                                         @click="toggleExpanded(task.id)"
                                         class="mr-2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                                        v-if="
-                                            task.sub_tasks &&
-                                            task.sub_tasks.length > 0
-                                        "
+                                        v-if="task.sub_tasks"
                                     >
                                         <component
                                             :is="
@@ -187,11 +184,7 @@
 
                         <!-- Subtasks row (expanded) -->
                         <tr
-                            v-if="
-                                isExpanded(task.id) &&
-                                task.sub_tasks &&
-                                task.sub_tasks.length > 0
-                            "
+                            v-if="isExpanded(task.id) && task.sub_tasks"
                             class="bg-gray-50"
                         >
                             <td colspan="6" class="px-6 py-4">

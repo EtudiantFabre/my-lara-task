@@ -70,7 +70,17 @@ class Task extends Model
             // Mettre à jour la progression du projet lorsque la tâche est mise à jour
             if ($task->isDirty('progress')) {
                 $project = $task->project;
-                $project->progress = $project->tasks()->avg('progress');
+                $avg = (float) $project->tasks()->avg('progress');
+                $taskCount = (int) $project->tasks()->count();
+                if ($taskCount > 0 && $avg >= 100) {
+                    $project->progress = $project->reviewed ? 100 : 90;
+                } else {
+                    $project->progress = $avg ?: 0;
+                    // si les tâches ne sont plus toutes complètes, annuler l'effet 100%
+                    if ($avg < 100) {
+                        // ne change pas reviewed mais garde un pourcentage fidèle
+                    }
+                }
                 $project->save();
             }
         });

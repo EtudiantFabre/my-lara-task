@@ -2,36 +2,23 @@
 
 namespace App\Services;
 
-use App\Models\Project;
 use App\Models\Task;
-use App\Models\User;
+use App\Models\Project;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 class TaskService
 {
     /**
-     * Get tasks for a project with filters
+     * Get tasks for a given project (eager load subtasks)
      */
-    public function getTasksForProject(Project $project, array $filters = [])
+    public function getTasksByProject(Project $project)
     {
-        $query = Task::where('project_id', $project->id)
-            ->with(['assignee', 'creator', 'subTasks']);
-
-        // Apply filters
-        if (isset($filters['status'])) {
-            $query->where('status', $filters['status']);
-        }
-
-        if (isset($filters['assigned_to'])) {
-            $query->where('assigned_to', $filters['assigned_to']);
-        }
-
-        return $query->latest()->get();
+        return $project->tasks()->with('subTasks')->orderBy('created_at', 'desc')->get();
     }
 
     /**
-     * Create a new task
+     * Create a new task under a project
      */
     public function createTask(array $data, Project $project): Task
     {
@@ -43,13 +30,13 @@ class TaskService
         $taskData = [
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
-            'project_id' => $project->id,
-            'created_by' => Auth::id(),
-            'assigned_to' => $data['assigned_to'] ?? Auth::id(),
             'status' => $data['status'] ?? 'not_started',
             'priority' => $data['priority'] ?? 'medium',
             'due_date' => $data['due_date'] ?? null,
             'estimated_time' => $data['estimated_time'] ?? 0,
+            'project_id' => $project->id,
+            'created_by' => Auth::id(),
+            'assigned_to' => $data['assigned_to'] ?? Auth::id(),
             'progress' => 0,
         ];
 
@@ -70,7 +57,7 @@ class TaskService
      */
     public function updateTask(Task $task, array $data): Task
     {
-        // Normalize estimated_time on update
+        // Normalize estimated_time
         if (!isset($data['estimated_time']) && isset($data['estimated_hours'])) {
             $data['estimated_time'] = (float) $data['estimated_hours'];
         }
@@ -82,7 +69,6 @@ class TaskService
             $task->update(['progress' => 100]);
         }
 
-        // Log activity
         activity()
             ->causedBy(Auth::user())
             ->performedOn($task)
@@ -97,7 +83,6 @@ class TaskService
      */
     public function deleteTask(Task $task): bool
     {
-        // Log activity before deletion
         activity()
             ->causedBy(Auth::user())
             ->performedOn($task)

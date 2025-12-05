@@ -47,6 +47,9 @@ class ProjectService
             'time_spent' => 0,
             'status' => $data['status'] ?? 'not_started',
             'progress' => $data['progress'] ?? 0,
+            'reviewed' => false,
+            'reviewed_at' => null,
+            'reviewed_by' => null,
             'user_id' => $user->id,
         ];
 

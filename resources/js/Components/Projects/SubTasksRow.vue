@@ -101,7 +101,7 @@ defineProps({
         default: () => [],
     },
     taskId: {
-        type: Number,
+        type: String,
         required: true,
     },
 });

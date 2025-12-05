@@ -28,6 +28,9 @@ class Project extends Model
         'time_spent',
         'progress',
         'status',
+        'reviewed',
+        'reviewed_at',
+        'reviewed_by',
         'user_id',
     ];
 
@@ -37,6 +40,8 @@ class Project extends Model
         'estimated_time' => 'float',
         'time_spent' => 'float',
         'progress' => 'float',
+        'reviewed' => 'boolean',
+        'reviewed_at' => 'datetime',
     ];
 
     protected static function boot()
